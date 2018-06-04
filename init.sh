@@ -33,13 +33,13 @@ alias     .stop="sudo docker stop $NAME"
            \
  ### stop the container, start it again with '.start'  
 
-alias .reindex="sudo docker stop $NAME;\
-          sudo docker run --privileged -p 11047:11047\
-          -p 11048:11048 -v $DATADIR/work:/work\
-          -d=true --name $NAME $NAME \
-          'parallelcoin -reindex'"  
+alias  .reindex=".stop;.rm;.build;.run /usr/bin/parallelcoind -reindex"
            \
  ### reindex blockchain
+
+alias      .cmd="sudo docker exec -it $NAME /usr/bin/parallelcoind"
+           \
+ ### execute command on client
 
 alias .restart=".stop;\
           .rm;\
@@ -51,11 +51,10 @@ alias .restart=".stop;\
 
 # alias  .steem="sudo docker exec -it $NAME steemd"  
 #### start up steemd inside the container attached to current terminal  
-alias    .cmd="sudo docker exec -it $NAME /usr/bin/parallelcoind"
-#"ps avx|grep parallelcoind|grep -v grep|grep -v bash|grep -v docker"
-           \
- ### display process information about all steemd's running on this server  
-
+# alias    .cmd="sudo docker exec -it $NAME /usr/bin/parallelcoind"
+#            \
+#  ### display process information about all steemd's running on this server  
+#
 alias    .enter="sudo docker exec -it $NAME bash"
            \
  ### open a shell inside the container  
