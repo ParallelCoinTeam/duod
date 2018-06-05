@@ -1,11 +1,9 @@
 package main
-
 import (
 	"crypto/rand"
 	"io/ioutil"
 	"os"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/chain"
@@ -13,10 +11,8 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
-
 func hostInit() {
 	common.DuodHomeDir = common.CFG.Datadir + string(os.PathSeparator)
-
 	common.Testnet = common.CFG.Testnet // So chaging this value would will only affect the behaviour after restart
 	if common.CFG.Testnet {             // testnet3
 		common.GenesisBlock = btc.NewUint256FromString("00000e41ecbaa35ef91b0c2c22ed4d85fa12bbc87da2668fe17572695fb30cdf")
@@ -29,20 +25,18 @@ func hostInit() {
 		common.DuodHomeDir += common.DataSubdir() + string(os.PathSeparator)
 		common.MaxPeersNeeded = 5000
 	}
-
-	// Lock the folder
 	os.MkdirAll(common.DuodHomeDir, 0770)
+	L.Debug("Locking datadir")
 	sys.LockDatabaseDir(common.DuodHomeDir)
-
 	common.SecretKey, _ = ioutil.ReadFile(common.DuodHomeDir + "authkey")
 	if len(common.SecretKey) != 32 {
 		common.SecretKey = make([]byte, 32)
 		rand.Read(common.SecretKey)
 		ioutil.WriteFile(common.DuodHomeDir+"authkey", common.SecretKey, 0600)
+		L.Debug("Wrote new authkey")
 	}
 	common.PublicKey = btc.EncodeBase58(btc.PublicFromPrivate(common.SecretKey, true))
 	L.Debug("Public auth key: ", common.PublicKey)
-
 	_Exit := make(chan bool)
 	_Done := make(chan bool)
 	go func() {
@@ -57,30 +51,24 @@ func hostInit() {
 			}
 		}
 	}()
-
 	if chain.AbortNow {
 		sys.UnlockDatabaseDir()
 		os.Exit(1)
 	}
-
 	if common.CFG.Memory.UseGoHeap {
 		L.Debug("Using native Go heap with the garbage collector for UTXO records")
 	} else {
 		utxo.MembindInit()
 	}
-
 	// L.Debugf("%s", string(common.LogBuffer.Bytes()))
 	common.LogBuffer = nil
-
 	if btc.ECVerify == nil {
 		L.Debug("Using native secp256k1 lib for ECVerify (consider installing a speedup)")
 	}
-
 	ext := &chain.NewChanOpts{
 		UTXOVolatileMode: common.FLAG.VolatileUTXO,
 		UndoBlocks:       common.FLAG.UndoBlocks,
 		BlockMinedCB:     blockMined}
-
 	sta := time.Now()
 	common.BlockChain = chain.NewChainExt(common.DuodHomeDir, common.GenesisBlock, common.FLAG.Rescan, ext,
 		&chain.BlockDBOpts{
@@ -93,28 +81,22 @@ func hostInit() {
 		sys.UnlockDatabaseDir()
 		os.Exit(1)
 	}
-
 	common.Last.Block = common.BlockChain.LastBlock()
 	common.Last.Time = time.Unix(int64(common.Last.Block.Timestamp()), 0)
 	if common.Last.Time.After(time.Now()) {
 		common.Last.Time = time.Now()
 	}
-
 	common.LockCfg()
 	common.ApplyLastTrustedBlock()
 	common.UnlockCfg()
-
 	if common.CFG.Memory.FreeAtStart {
 		L.Debug("Freeing memory... ")
 		sys.FreeMem()
 	}
 	sto := time.Now()
-
 	al, sy := sys.MemUsed()
    L.Debug("Blockchain open in ", sto.Sub(sta).String(), ". ", al>>20, " + ", utxo.ExtraMemoryConsumed()>>20, "MB of RAM used (", sy>>20,")")
-
 	common.StartTime = time.Now()
 	_Exit <- true
 	_ = <-_Done
-
 }
