@@ -33,11 +33,9 @@ alias     .stop="sudo docker stop $NAME"
            \
  ### stop the container, start it again with '.start'  
 
-alias .reindex="sudo docker stop $NAME;\
-          sudo docker run --privileged -p 11047:11047\
-          -p 11048:11048 -v $DATADIR/work:/work\
-          -d=true --name $NAME $NAME \
-          'parallelcoin -reindex'"  
+alias .reindex=".stop;\
+          .start; \
+          sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser -rpcpassword=pa55word -conf=/work/parallelcoin.conf -datadir=/work -reindex -printtoconsole\""  
            \
  ### reindex blockchain
 
@@ -45,16 +43,17 @@ alias .restart=".stop;\
           .rm;\
           .build;\
           .run;\
-          .start"  
+          .start;\
+          sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser -rpcpassword=pa55word -conf=/work/parallelcoin.conf -datadir=/work\
+          -printtoconsole\""  
            \
  ### restart client
 
 # alias  .steem="sudo docker exec -it $NAME steemd"  
 #### start up steemd inside the container attached to current terminal  
-alias    .cmd="sudo docker exec -it $NAME /usr/bin/parallelcoind"
-#"ps avx|grep parallelcoind|grep -v grep|grep -v bash|grep -v docker"
+alias    .getinfo="sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser -rpcpassword=pa55word -conf=/work/parallelcoin.conf -datadir=/work -printtoconsole getinfo\""
            \
- ### display process information about all steemd's running on this server  
+ ### display status information from server  
 
 alias    .enter="sudo docker exec -it $NAME bash"
            \

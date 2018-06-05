@@ -322,9 +322,9 @@ func RPCPort() (res uint32) {
 		return
 	}
 	if CFG.Testnet {
-		res = 18332
+		res = 21048
 	} else {
-		res = 8332
+		res = 11048
 	}
 	return
 }

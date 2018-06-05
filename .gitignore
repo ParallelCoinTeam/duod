@@ -10,3 +10,8 @@ work/.bash_history
 duod.conf
 .bash_history
 !parallelcoin.conf
+work/blocks/
+work/chainstate
+work/database
+.lock
+db.log
