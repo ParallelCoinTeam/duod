@@ -1,5 +1,4 @@
 package webui
-
 import (
 	"archive/zip"
 	"bytes"
@@ -12,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/client/usif"
@@ -20,17 +18,14 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
-
 func pWal(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	if !common.GetBool(&common.WalletON) {
 		pWalletIsOff(w, r)
 		return
 	}
-
 	var str string
 	common.Last.Mutex.Lock()
 	if common.BlockChain.Consensus.EnforceSegwit != 0 &&
@@ -46,7 +41,6 @@ func pWal(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(page))
 	writeHTMLTail(w)
 }
-
 func getaddrtype(aa *btc.Addr) string {
 	if aa.SegwitProg != nil && aa.SegwitProg.Version == 0 && len(aa.SegwitProg.Program) == 20 {
 		return "P2WPKH"
@@ -59,33 +53,27 @@ func getaddrtype(aa *btc.Addr) string {
 	}
 	return "unknown"
 }
-
 func jsonBalance(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) || !common.GetBool(&common.WalletON) {
 		return
 	}
-
 	if r.Method != "POST" {
 		return
 	}
-
 	summary := len(r.Form["summary"]) > 0
 	mempool := len(r.Form["mempool"]) > 0
 	getrawtx := len(r.Form["rawtx"]) > 0
-
 	inp, er := ioutil.ReadAll(r.Body)
 	if er != nil {
 		println(er.Error())
 		return
 	}
-
 	var addrs []string
 	er = json.Unmarshal(inp, &addrs)
 	if er != nil {
 		println(er.Error())
 		return
 	}
-
 	type OneOut struct {
 		TxID     string
 		Vout     uint32
@@ -98,7 +86,6 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 		Spending bool   // if true the spending tx is in the mempool
 		RawTx    string `json:",omitempty"`
 	}
-
 	type OneOuts struct {
 		Value            uint64
 		OutCnt           int
@@ -107,36 +94,28 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 		SegWitNativeCnt  int
 		SegWitNativeAddr string
 		Outs             []OneOut
-
 		PendingCnt   int
 		PendingValue uint64
 		PendingOuts  []OneOut
-
 		SpendingValue uint64
 		SpendingCnt   uint64
 	}
-
 	out := make(map[string]*OneOuts)
-
 	lck := new(usif.OneLock)
 	lck.In.Add(1)
 	lck.Out.Add(1)
 	usif.LocksChan <- lck
 	lck.In.Wait()
-
 	var addrMap map[string]string
-
 	if mempool {
 		// make addrs -> idx
 		addrMap = make(map[string]string, 2*len(addrs))
 	}
-
 	for _, a := range addrs {
 		aa, e := btc.NewAddrFromString(a)
 		if e != nil {
 			continue
 		}
-
 		unsp := wallet.GetAllUnspent(aa)
 		newrec := new(OneOuts)
 		if len(unsp) > 0 {
@@ -167,17 +146,13 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
 		out[a] = newrec
-
 		if mempool {
 			addrMap[string(aa.OutScript())] = a
 		}
-
 		/* For P2KH addr, we wlso check its segwit's P2SH-P2WPKH and Native P2WPKH */
 		if aa.SegwitProg == nil && aa.Version == btc.AddrVerPubkey(common.Testnet) {
 			p2kh := aa.Hash160
-
 			// P2SH SegWit if applicable
 			h160 := btc.Rimp160AfterSha256(append([]byte{0, 20}, p2kh[:]...))
 			aa = btc.NewAddrFromHash160(h160[:], btc.AddrVerScript(common.Testnet))
@@ -216,7 +191,6 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 			if mempool {
 				addrMap[string(aa.OutScript())] = a
 			}
-
 			// Native SegWit if applicable
 			aa = btc.NewAddrFromPkScript(append([]byte{0, 20}, p2kh[:]...), common.Testnet)
 			newrec.SegWitNativeAddr = aa.String()
@@ -254,10 +228,8 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 			if mempool {
 				addrMap[string(aa.OutScript())] = a
 			}
-
 		}
 	}
-
 	// check memory pool
 	if mempool {
 		network.TxMutex.Lock()
@@ -279,9 +251,7 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 		}
 		network.TxMutex.Unlock()
 	}
-
 	lck.Out.Done()
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -290,25 +260,20 @@ func jsonBalance(w http.ResponseWriter, r *http.Request) {
 		println(er.Error())
 	}
 }
-
 func dlBalance(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) || !common.GetBool(&common.WalletON) {
 		return
 	}
-
 	if r.Method != "POST" {
 		return
 	}
-
 	var addrs []string
 	var labels []string
-
 	if len(r.Form["addrcnt"]) != 1 {
 		println("no addrcnt")
 		return
 	}
 	addrcnt, _ := strconv.ParseUint(r.Form["addrcnt"][0], 10, 32)
-
 	for i := 0; i < int(addrcnt); i++ {
 		is := fmt.Sprint(i)
 		if len(r.Form["addr"+is]) == 1 {
@@ -320,7 +285,6 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-
 	type oneUnspRec struct {
 		btc.TxPrevOut
 		Value    uint64
@@ -328,15 +292,12 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 		MinedAt  uint32
 		Coinbase bool
 	}
-
 	var thisbal utxo.AllUnspentTx
-
 	lck := new(usif.OneLock)
 	lck.In.Add(1)
 	lck.Out.Add(1)
 	usif.LocksChan <- lck
 	lck.In.Wait()
-
 	for idx, a := range addrs {
 		aa, e := btc.NewAddrFromString(a)
 		aa.Extra.Label = labels[idx]
@@ -345,11 +306,9 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 			if len(newrecs) > 0 {
 				thisbal = append(thisbal, newrecs...)
 			}
-
 			/* Segwit P2WPKH: */
 			if aa.SegwitProg == nil && aa.Version == btc.AddrVerPubkey(common.Testnet) {
 				p2kh := aa.Hash160
-
 				// P2SH SegWit if applicable
 				h160 := btc.Rimp160AfterSha256(append([]byte{0, 20}, aa.Hash160[:]...))
 				aa = btc.NewAddrFromHash160(h160[:], btc.AddrVerScript(common.Testnet))
@@ -357,7 +316,6 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 				if len(newrecs) > 0 {
 					thisbal = append(thisbal, newrecs...)
 				}
-
 				// Native SegWit if applicable
 				aa = btc.NewAddrFromPkScript(append([]byte{0, 20}, p2kh[:]...), common.Testnet)
 				newrecs = wallet.GetAllUnspent(aa)
@@ -368,11 +326,9 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	lck.Out.Done()
-
 	buf := new(bytes.Buffer)
 	zi := zip.NewWriter(buf)
 	wasTx := make(map[[32]byte]bool)
-
 	sort.Sort(thisbal)
 	for i := range thisbal {
 		if wasTx[thisbal[i].TxPrevOut.Hash] {
@@ -387,23 +343,18 @@ func dlBalance(w http.ResponseWriter, r *http.Request) {
 			println(er.Error())
 		}
 	}
-
 	fz, _ := zi.Create("balance/unspent.txt")
 	for i := range thisbal {
 		fmt.Fprintln(fz, thisbal[i].UnspentTextLine())
 	}
-
 	zi.Close()
 	w.Header()["Content-Type"] = []string{"application/zip"}
 	w.Write(buf.Bytes())
-
 }
-
 func jsonWalletStatus(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	var out struct {
 		WalletON       bool
 		WalletProgress uint32
@@ -414,7 +365,6 @@ func jsonWalletStatus(w http.ResponseWriter, r *http.Request) {
 	out.WalletProgress = common.WalletProgress
 	out.WalletOnIn = common.WalletOnIn
 	common.UnlockCfg()
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}

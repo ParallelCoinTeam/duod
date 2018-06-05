@@ -1,15 +1,11 @@
 package rpcapi
-
 import (
 	"encoding/hex"
-
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	//"github.com/ParallelCoinTeam/duod/client/common"
 	// "github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 /*
-
 {"result":
 	{"isvalid":true,
 	"address":"mqzwxBkSH1UKqEAjGwvkj6aV5Gc6BtBCSs",
@@ -19,7 +15,6 @@ import (
 	"isscript":false
 }
 */
-
 // ValidAddressResponse -
 type ValidAddressResponse struct {
 	IsValid      bool   `json:"isvalid"`
@@ -29,12 +24,10 @@ type ValidAddressResponse struct {
 	IsWatchOnly  bool   `json:"iswatchonly"`
 	IsScript     bool   `json:"isscript"`
 }
-
 // InvalidAddressResponse -
 type InvalidAddressResponse struct {
 	IsValid bool `json:"isvalid"`
 }
-
 // ValidateAddress -
 func ValidateAddress(addr string) interface{} {
 	a, e := btc.NewAddrFromString(addr)

@@ -95,7 +95,7 @@ func hostInit() {
 	}
 	sto := time.Now()
 	al, sy := sys.MemUsed()
-   L.Debug("Blockchain open in ", sto.Sub(sta).String(), ". ", al>>20, " + ", utxo.ExtraMemoryConsumed()>>20, "MB of RAM used (", sy>>20,")")
+L.Debug("Blockchain open in ", sto.Sub(sta).String(), ". ", al>>20, " + ", utxo.ExtraMemoryConsumed()>>20, "MB of RAM used (", sy>>20,")")
 	common.StartTime = time.Now()
 	_Exit <- true
 	_ = <-_Done

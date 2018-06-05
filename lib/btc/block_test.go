@@ -1,5 +1,4 @@
 package btc
-
 import (
 	"encoding/hex"
 	"io/ioutil"
@@ -7,18 +6,14 @@ import (
 	"os"
 	"testing"
 )
-
 const blockHash = "0000000000000000000884ad62c7036a7e2022bca3f0bd68628414150e8a0ea6"
-
 var _blockFilename = ""
-
 func blockFilename() string {
 	if _blockFilename == "" {
 		_blockFilename = os.TempDir() + string(os.PathSeparator) + blockHash
 	}
 	return _blockFilename
 }
-
 // Download block from blockchain.info and store it in the TEMP folder
 func fetchBlock(b *testing.B) {
 	url := "https://blockchain.info/block/" + blockHash + "?format=hex"
@@ -41,7 +36,6 @@ func fetchBlock(b *testing.B) {
 	}
 	return
 }
-
 func BenchmarkBuildTxList(b *testing.B) {
 	raw, e := ioutil.ReadFile(blockFilename())
 	if e != nil {
@@ -61,7 +55,6 @@ func BenchmarkBuildTxList(b *testing.B) {
 		bl.BuildTxList()
 	}
 }
-
 func BenchmarkCalcMerkle(b *testing.B) {
 	raw, e := ioutil.ReadFile(blockFilename())
 	if e != nil {

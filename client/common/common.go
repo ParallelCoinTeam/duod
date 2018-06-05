@@ -1,6 +1,5 @@
 // Package common -
 package common
-
 import (
 	"bytes"
 	"errors"
@@ -11,13 +10,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/chain"
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 	"github.com/ParallelCoinTeam/duod/lib/others/utils"
 )
-
 const (
 	// ConfigFile -
 	ConfigFile = "duod.conf"
@@ -26,7 +23,6 @@ const (
 	// Services -
 	Services = uint64(1) // 0x00000009)
 )
-
 var (
 	// LogBuffer -
 	LogBuffer = new(bytes.Buffer)
@@ -52,13 +48,11 @@ var (
 	CounterMutex sync.Mutex
 	// Counter -
 	Counter = make(map[string]uint64)
-
 	busyLine int32
 	// NetworkClosed -
 	NetworkClosed sys.SyncBool
 	// AverageBlockSize -
 	AverageBlockSize sys.SyncInt
-
 	allBalMinVal uint64
 	// DropSlowestEvery -
 	DropSlowestEvery time.Duration
@@ -70,7 +64,6 @@ var (
 	UserAgent string
 	// ListenTCP -
 	ListenTCP bool
-
 	minFeePerKB, routeMinFeePerKB, minminFeePerKB uint64
 	maxMempoolSizeBytes, maxRejectedSizeBytes     uint64
 	// KillChan -
@@ -91,14 +84,12 @@ var (
 	// LastTrustedBlockHeight -
 	LastTrustedBlockHeight uint32
 )
-
 // TheLastBlock -
 type TheLastBlock struct {
 	sync.Mutex // use it for writing and reading from non-chain thread
 	Block      *chain.BlockTreeNode
 	time.Time
 }
-
 // BlockHeight -
 func (b *TheLastBlock) BlockHeight() (res uint32) {
 	b.Mutex.Lock()
@@ -106,33 +97,28 @@ func (b *TheLastBlock) BlockHeight() (res uint32) {
 	b.Mutex.Unlock()
 	return
 }
-
 // CountSafe -
 func CountSafe(k string) {
 	CounterMutex.Lock()
 	Counter[k]++
 	CounterMutex.Unlock()
 }
-
 // CountSafeAdd -
 func CountSafeAdd(k string, val uint64) {
 	CounterMutex.Lock()
 	Counter[k] += val
 	CounterMutex.Unlock()
 }
-
 // Busy -
 func Busy() {
 	var line int
 	_, _, line, _ = runtime.Caller(1)
 	atomic.StoreInt32(&busyLine, int32(line))
 }
-
 // BusyIn -
 func BusyIn() int {
 	return int(atomic.LoadInt32(&busyLine))
 }
-
 // BytesToString -
 func BytesToString(val uint64) string {
 	if val < 1e6 {
@@ -142,7 +128,6 @@ func BytesToString(val uint64) string {
 	}
 	return fmt.Sprintf("%.2f GB", float64(val)/1e9)
 }
-
 // NumberToString -
 func NumberToString(num float64) string {
 	if num > 1e24 {
@@ -171,12 +156,10 @@ func NumberToString(num float64) string {
 	}
 	return fmt.Sprintf("%.2f", num)
 }
-
 // HashrateToString -
 func HashrateToString(hr float64) string {
 	return NumberToString(hr) + "H/s"
 }
-
 // RecalcAverageBlockSize -
 // Calculates average blocks size over the last "CFG.Stat.BSizeBlks" blocks
 // Only call from blockchain thread.
@@ -194,7 +177,6 @@ func RecalcAverageBlockSize() {
 		AverageBlockSize.Store(204)
 	}
 }
-
 // GetRawTx -
 func GetRawTx(BlockHeight uint32, txid *btc.Uint256) (data []byte, er error) {
 	data, er = BlockChain.GetRawTx(BlockHeight, txid)
@@ -212,7 +194,6 @@ func GetRawTx(BlockHeight uint32, txid *btc.Uint256) (data []byte, er error) {
 	}
 	return
 }
-
 // WalletPendingTick -
 func WalletPendingTick() (res bool) {
 	mutexCfg.Lock()
@@ -223,14 +204,12 @@ func WalletPendingTick() (res bool) {
 	mutexCfg.Unlock()
 	return
 }
-
 // ApplyLastTrustedBlock -
 // Make sure to call it with mutexCfg locked
 func ApplyLastTrustedBlock() {
 	hash := btc.NewUint256FromString(CFG.LastTrustedBlock)
 	lastTrustedBlock = hash
 	LastTrustedBlockHeight = 0
-
 	if BlockChain != nil {
 		BlockChain.BlockIndexAccess.Lock()
 		node := BlockChain.BlockIndex[hash.BIdx()]
@@ -244,7 +223,6 @@ func ApplyLastTrustedBlock() {
 		}
 	}
 }
-
 // LastTrustedBlockMatch -
 func LastTrustedBlockMatch(h *btc.Uint256) (res bool) {
 	mutexCfg.Lock()
@@ -252,7 +230,6 @@ func LastTrustedBlockMatch(h *btc.Uint256) (res bool) {
 	mutexCfg.Unlock()
 	return
 }
-
 // AcceptTx -
 func AcceptTx() (res bool) {
 	mutexCfg.Lock()

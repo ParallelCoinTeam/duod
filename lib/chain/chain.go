@@ -1,33 +1,25 @@
 package chain
-
 import (
 	"encoding/binary"
 	"fmt"
 	"math/big"
 	"sync"
-
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
-
 // AbortNow -
 var AbortNow bool // set it to true to abort any activity
-
 // Chain -
 type Chain struct {
 	Blocks  *BlockDB        // blockchain.dat and blockchain.idx
 	Unspent *utxo.UnspentDB // unspent folder
-
 	BlockTreeRoot   *BlockTreeNode
 	blockTreeEnd    *BlockTreeNode
 	blockTreeAccess sync.Mutex
 	Genesis         *btc.Uint256
-
 	BlockIndexAccess sync.Mutex
 	BlockIndex       map[[btc.Uint256IdxLen]byte]*BlockTreeNode
-
 	CB NewChanOpts // callbacks used by Unspent database
-
 	Consensus struct {
 		Window, EnforceUpgrade, RejectBlock uint
 		MaxPOWBits                          uint32
@@ -43,7 +35,6 @@ type Chain struct {
 		S2XHeight                           uint32
 	}
 }
-
 // NewChanOpts -
 type NewChanOpts struct {
 	UTXOVolatileMode bool
@@ -51,18 +42,14 @@ type NewChanOpts struct {
 	UTXOCallbacks    utxo.CallbackFunctions
 	BlockMinedCB     func(*btc.Block) // used to remove mined txs from memory pool
 }
-
 // NewChainExt - This is the very first function one should call in order to use this package
 func NewChainExt(dbrootdir string, genesis *btc.Uint256, rescan bool, opts *NewChanOpts, bdbopts *BlockDBOpts) (ch *Chain) {
 	ch = new(Chain)
 	ch.Genesis = genesis
-
 	if opts == nil {
 		opts = &NewChanOpts{}
 	}
-
 	ch.CB = *opts
-
 	ch.Consensus.GensisTimestamp = 1405742300 // 1231006505
 	ch.Consensus.MaxPOWBits = 0x1e0fffff // 0x1d00ffff
 	ch.Consensus.MaxPOWValue, _ = new(big.Int).SetString("00000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16)
@@ -82,30 +69,23 @@ func NewChainExt(dbrootdir string, genesis *btc.Uint256, rescan bool, opts *NewC
 		ch.Consensus.BIP91Height = 1000000 // 477120
 		ch.Consensus.BIP9Threshold = 1000000 // 1916
 	}
-
 	ch.Blocks = NewBlockDBExt(dbrootdir, bdbopts)
-
 	ch.Unspent = utxo.NewUnspentDB(&utxo.NewUnspentOpts{
 		Dir: dbrootdir, Rescan: rescan, VolatimeMode: opts.UTXOVolatileMode,
 		CB: opts.UTXOCallbacks, AbortNow: &AbortNow})
-
 	if AbortNow {
 		return
 	}
-
 	ch.loadBlockIndex()
 	if AbortNow {
 		return
 	}
-
 	if rescan {
 		ch.SetLast(ch.BlockTreeRoot)
 	}
-
 	if AbortNow {
 		return
 	}
-
 	if opts.UndoBlocks > 0 {
 		fmt.Println("Undo", opts.UndoBlocks, "block(s) and exit...")
 		for opts.UndoBlocks > 0 {
@@ -114,7 +94,6 @@ func NewChainExt(dbrootdir string, genesis *btc.Uint256, rescan bool, opts *NewC
 		}
 		return
 	}
-
 	// And now re-apply the blocks which you have just reverted :)
 	end, _ := ch.BlockTreeRoot.FindFarthestNode()
 	if end.Height > ch.LastBlock().Height {
@@ -122,10 +101,8 @@ func NewChainExt(dbrootdir string, genesis *btc.Uint256, rescan bool, opts *NewC
 	} else {
 		ch.Unspent.LastBlockHeight = end.Height
 	}
-
 	return
 }
-
 // RebuildGenesisHeader - Calculate an imaginary header of the genesis block (for Timestamp() and Bits() functions from chain_tree.go)
 func (ch *Chain) RebuildGenesisHeader() {
 	binary.LittleEndian.PutUint32(ch.BlockTreeRoot.BlockHeader[0:4], 1) // Version
@@ -135,14 +112,12 @@ func (ch *Chain) RebuildGenesisHeader() {
 	binary.LittleEndian.PutUint32(ch.BlockTreeRoot.BlockHeader[72:76], ch.Consensus.MaxPOWBits)      // Bits
 	// [76:80] - nonce
 }
-
 // Idle - Call this function periodically (i.e. each second)
 // when your client is idle, to defragment databases.
 func (ch *Chain) Idle() bool {
 	ch.Blocks.Idle()
 	return ch.Unspent.Idle()
 }
-
 // Stats - Return blockchain stats in one string.
 func (ch *Chain) Stats() (s string) {
 	last := ch.LastBlock()
@@ -154,18 +129,15 @@ func (ch *Chain) Stats() (s string) {
 	s += ch.Unspent.GetStats()
 	return
 }
-
 // Close the databases.
 func (ch *Chain) Close() {
 	ch.Blocks.Close()
 	ch.Unspent.Close()
 }
-
 // Returns true if we are on Testnet3 chain
 func (ch *Chain) testnet() bool {
 	return ch.Genesis.Hash[0] == 0x43 // it's simple, but works
 }
-
 // MaxBlockWeight - For SegWit2X
 func (ch *Chain) MaxBlockWeight(height uint32) uint {
 	if ch.Consensus.S2XHeight != 0 && height >= ch.Consensus.S2XHeight {
@@ -173,7 +145,6 @@ func (ch *Chain) MaxBlockWeight(height uint32) uint {
 	}
 	return btc.MaxBlockWeight
 }
-
 // MaxBlockSigopsCost - For SegWit2X
 func (ch *Chain) MaxBlockSigopsCost(height uint32) uint32 {
 	if ch.Consensus.S2XHeight != 0 && height >= ch.Consensus.S2XHeight {
@@ -181,7 +152,6 @@ func (ch *Chain) MaxBlockSigopsCost(height uint32) uint32 {
 	}
 	return btc.MaxBlockSigOpsCost
 }
-
 // LastBlock -
 func (ch *Chain) LastBlock() (res *BlockTreeNode) {
 	ch.blockTreeAccess.Lock()
@@ -189,7 +159,6 @@ func (ch *Chain) LastBlock() (res *BlockTreeNode) {
 	ch.blockTreeAccess.Unlock()
 	return
 }
-
 // SetLast -
 func (ch *Chain) SetLast(val *BlockTreeNode) {
 	ch.blockTreeAccess.Lock()

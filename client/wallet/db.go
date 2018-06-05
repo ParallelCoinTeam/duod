@@ -1,15 +1,12 @@
 package wallet
-
 import (
 	"bytes"
 	"encoding/binary"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
-
 var (
 	// AllBalancesP2KH -
 	AllBalancesP2KH map[[20]byte]*OneAllAddrBal
@@ -20,17 +17,14 @@ var (
 	// AllBalancesP2WSH -
 	AllBalancesP2WSH map[[32]byte]*OneAllAddrBal
 )
-
 // OneAllAddrInp -
 type OneAllAddrInp [utxo.UtxoIdxLen + 4]byte
-
 // OneAllAddrBal -
 type OneAllAddrBal struct {
 	Value   uint64 // Highest bit of it means P2SH
 	unsp    []OneAllAddrInp
 	unspMap map[OneAllAddrInp]bool
 }
-
 // GetRec -
 func (ur *OneAllAddrInp) GetRec() (rec *utxo.Rec, vout uint32) {
 	var ind utxo.KeyType
@@ -44,15 +38,12 @@ func (ur *OneAllAddrInp) GetRec() (rec *utxo.Rec, vout uint32) {
 	}
 	return
 }
-
 // NewUTXO -
 func NewUTXO(tx *utxo.Rec) {
 	var uidx [20]byte
 	var rec *OneAllAddrBal
 	var nr OneAllAddrInp
-
 	copy(nr[:utxo.UtxoIdxLen], tx.TxID[:]) //RecIdx
-
 	for vout := uint32(0); vout < uint32(len(tx.Outs)); vout++ {
 		out := tx.Outs[vout]
 		if out == nil {
@@ -93,11 +84,8 @@ func NewUTXO(tx *utxo.Rec) {
 		} else {
 			continue
 		}
-
 		binary.LittleEndian.PutUint32(nr[utxo.UtxoIdxLen:], vout)
-
 		rec.Value += out.Value
-
 		if rec.unspMap != nil {
 			rec.unspMap[nr] = true
 			continue
@@ -112,11 +100,9 @@ func NewUTXO(tx *utxo.Rec) {
 			rec.unspMap[nr] = true
 			continue
 		}
-
 		rec.unsp = append(rec.unsp, nr)
 	}
 }
-
 func allDelUTXOs(tx *utxo.Rec, outs []bool) {
 	var uidx [20]byte
 	var uidx32 [32]byte
@@ -155,15 +141,12 @@ func allDelUTXOs(tx *utxo.Rec, outs []bool) {
 		} else {
 			continue
 		}
-
 		if rec == nil {
 			L.Error("balance rec not found for", btc.NewAddrFromPkScript(out.PKScr, common.CFG.Testnet).String(),
 				btc.NewUint256(tx.TxID[:]).String(), vout, btc.UintToBtc(out.Value))
 			continue
 		}
-
 		binary.LittleEndian.PutUint32(nr[utxo.UtxoIdxLen:], vout)
-
 		if rec.unspMap != nil {
 			if _, ok := rec.unspMap[nr]; !ok {
 				L.Error("unspent rec not in map for", btc.NewAddrFromPkScript(out.PKScr, common.CFG.Testnet).String())
@@ -186,7 +169,6 @@ func allDelUTXOs(tx *utxo.Rec, outs []bool) {
 			}
 			continue
 		}
-
 		for i = 0; i < len(rec.unsp); i++ {
 			if bytes.Equal(rec.unsp[i][:], nr[:]) {
 				break
@@ -213,17 +195,14 @@ func allDelUTXOs(tx *utxo.Rec, outs []bool) {
 		}
 	}
 }
-
 // TxNotifyAdd -This is called while accepting the block (from the chain's thread)
 func TxNotifyAdd(tx *utxo.Rec) {
 	NewUTXO(tx)
 }
-
 // TxNotifyDel -This is called while accepting the block (from the chain's thread)
 func TxNotifyDel(tx *utxo.Rec, outs []bool) {
 	allDelUTXOs(tx, outs)
 }
-
 // Browse -Call the cb function for each unspent record
 func (r *OneAllAddrBal) Browse(cb func(*OneAllAddrInp)) {
 	if r.unspMap != nil {
@@ -236,7 +215,6 @@ func (r *OneAllAddrBal) Browse(cb func(*OneAllAddrInp)) {
 		}
 	}
 }
-
 // Count -
 func (r *OneAllAddrBal) Count() int {
 	if r.unspMap != nil {
@@ -244,7 +222,6 @@ func (r *OneAllAddrBal) Count() int {
 	}
 	return len(r.unsp)
 }
-
 // GetAllUnspent -
 func GetAllUnspent(aa *btc.Addr) (thisbal utxo.AllUnspentTx) {
 	var rec *OneAllAddrBal
@@ -276,7 +253,6 @@ func GetAllUnspent(aa *btc.Addr) (thisbal utxo.AllUnspentTx) {
 				if oo := qr.Outs[vout]; oo != nil {
 					unsp := &utxo.OneUnspentTx{TxPrevOut: btc.TxPrevOut{Hash: qr.TxID, Vout: vout},
 						Value: oo.Value, MinedAt: qr.InBlock, Coinbase: qr.Coinbase, Addr: aa}
-
 					if int(vout+1) < len(qr.Outs) {
 						var msg []byte
 						if qr.Outs[vout+1] != nil && len(qr.Outs[vout+1].PKScr) > 1 && qr.Outs[vout+1].PKScr[0] == 0x6a {
@@ -296,7 +272,6 @@ func GetAllUnspent(aa *btc.Addr) (thisbal utxo.AllUnspentTx) {
 	}
 	return
 }
-
 // PrintStat -
 func PrintStat() {
 	var p2khMaps, p2khOuts, p2khVals uint64
@@ -309,7 +284,6 @@ func PrintStat() {
 			p2khOuts += uint64(len(r.unsp))
 		}
 	}
-
 	var p2shMaps, p2shOuts, p2shVals uint64
 	for _, r := range AllBalancesP2SH {
 		p2shVals += r.Value
@@ -320,7 +294,6 @@ func PrintStat() {
 			p2shOuts += uint64(len(r.unsp))
 		}
 	}
-
 	var p2wkhMaps, p2wkhOuts, p2wkhVals uint64
 	for _, r := range AllBalancesP2WKH {
 		p2wkhVals += r.Value
@@ -331,7 +304,6 @@ func PrintStat() {
 			p2wkhOuts += uint64(len(r.unsp))
 		}
 	}
-
 	var p2wshMaps, p2wshOuts, p2wshVals uint64
 	for _, r := range AllBalancesP2WSH {
 		p2wshVals += r.Value
@@ -365,18 +337,13 @@ func PrintStat() {
 			p2wshOuts += uint64(len(r.unsp))
 		}
 	}
-
 	L.Info("AllBalMinVal:", btc.UintToBtc(common.AllBalMinVal()), "  UseMapCnt:", common.CFG.AllBalances.UseMapCnt)
-
 	L.Info("AllBalancesP2KH: ", len(AllBalancesP2KH), "records,",
 		p2khOuts, "outputs,", btc.UintToBtc(p2khVals), "BTC,", p2khMaps, "maps")
-
 	L.Info("AllBalancesP2SH: ", len(AllBalancesP2SH), "records,",
 		p2shOuts, "outputs,", btc.UintToBtc(p2shVals), "BTC,", p2shMaps, "maps")
-
 	L.Info("AllBalancesP2WKH: ", len(AllBalancesP2WKH), "records,",
 		p2wkhOuts, "outputs,", btc.UintToBtc(p2wkhVals), "BTC,", p2wkhMaps, "maps")
-
 	L.Info("AllBalancesP2WSH: ", len(AllBalancesP2WSH), "records,",
 		p2wshOuts, "outputs,", btc.UintToBtc(p2wshVals), "BTC,", p2wshMaps, "maps")
 }

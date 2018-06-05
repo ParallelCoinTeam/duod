@@ -1,5 +1,4 @@
 package rpcapi
-
 import (
 	"encoding/hex"
 	"encoding/json"
@@ -8,28 +7,23 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 // BlockSubmitted -
 type BlockSubmitted struct {
 	*btc.Block
 	Error string
 	Done  sync.WaitGroup
 }
-
 // RPCBlocks -
 var RPCBlocks = make(chan *BlockSubmitted, 1)
-
 // SubmitBlock -
 func SubmitBlock(cmd *RPCCommand, resp *RPCResponse, b []byte) {
 	var bd []byte
 	var er error
-
 	switch uu := cmd.Params.(type) {
 	case []interface{}:
 		if len(uu) < 1 {
@@ -54,24 +48,19 @@ func SubmitBlock(cmd *RPCCommand, resp *RPCResponse, b []byte) {
 			resp.Error = RPCError{Code: -3, Message: er.Error()}
 			return
 		}
-
 	default:
 		resp.Error = RPCError{Code: -2, Message: "incorrect params type"}
 		return
 	}
-
 	bs := new(BlockSubmitted)
-
 	bs.Block, er = btc.NewBlock(bd)
 	if er != nil {
 		resp.Error = RPCError{Code: -4, Message: er.Error()}
 		return
 	}
-
 	network.MutexRcv.Lock()
 	network.ReceivedBlocks[bs.Block.Hash.BIdx()] = &network.OneReceivedBlock{TmStart: time.Now()}
 	network.MutexRcv.Unlock()
-
 	L.Debug("new block", bs.Block.Hash.String(), "len", len(bd), "- submitting...")
 	bs.Done.Add(1)
 	RPCBlocks <- bs
@@ -86,7 +75,6 @@ func SubmitBlock(cmd *RPCCommand, resp *RPCResponse, b []byte) {
 		}
 		L.Debug("submiting block error:", bs.Error)
 		L.Debug("submiting block result:", resp.Result.(string))
-
 		L.Debug("time_now:", time.Now().Unix())
 		L.Debug("  cur_block_ts:", bs.Block.BlockTime())
 		L.Debug("  last_given_now:", lastGivenTime)
@@ -94,10 +82,8 @@ func SubmitBlock(cmd *RPCCommand, resp *RPCResponse, b []byte) {
 		common.Last.Mutex.Lock()
 		L.Debug("  prev_block_ts:", common.Last.Block.Timestamp())
 		common.Last.Mutex.Unlock()
-
 		return
 	}
-
 	// cress check with bitcoind...
 	if false {
 		BitcoindResult := processRPC(b)
@@ -111,5 +97,4 @@ func SubmitBlock(cmd *RPCCommand, resp *RPCResponse, b []byte) {
 		}
 	}
 }
-
 var lastGivenTime, lastGivenMinTime uint32

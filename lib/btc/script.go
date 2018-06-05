@@ -1,5 +1,4 @@
 package btc
-
 import (
 	"bytes"
 	"encoding/binary"
@@ -10,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 )
-
 // RawToStack -
 func RawToStack(sig []byte) []byte {
 	if len(sig) == 1 {
@@ -40,12 +38,10 @@ func RawToStack(sig []byte) []byte {
 	bb.Write(sig)
 	return bb.Bytes()
 }
-
 func int2scr(v int64) []byte {
 	if v == -1 || v >= 1 && v <= 16 {
 		return []byte{byte(v + OP_1 - 1)}
 	}
-
 	neg := v < 0
 	if neg {
 		v = -v
@@ -61,15 +57,12 @@ func int2scr(v int64) []byte {
 	} else if neg {
 		bts[0] |= 0x80
 	}
-
 	sig := make([]byte, len(bts))
 	for i := range bts {
 		sig[len(bts)-i-1] = bts[i]
 	}
-
 	return RawToStack(sig)
 }
-
 // DecodeScript -
 func DecodeScript(pk string) (out []byte, e error) {
 	xx := strings.Split(pk, " ")
@@ -295,25 +288,21 @@ func DecodeScript(pk string) (out []byte, e error) {
 	}
 	return
 }
-
 // ScriptToText -
 func ScriptToText(p []byte) (out []string, e error) {
 	var opcnt, idx int
 	for idx < len(p) {
 		opcode, vchPushValue, n, er := GetOpcode(p[idx:])
-
 		if er != nil {
 			e = errors.New("ScriptToText: " + er.Error())
 			println("C", idx, hex.EncodeToString(p))
 			return
 		}
 		idx += n
-
 		if vchPushValue != nil && len(vchPushValue) > MaxScriptElementSize {
 			e = errors.New(fmt.Sprint("ScriptToText: vchPushValue too long ", len(vchPushValue)))
 			return
 		}
-
 		if opcode > 0x60 {
 			opcnt++
 			if opcnt > 201 {
@@ -321,7 +310,6 @@ func ScriptToText(p []byte) (out []string, e error) {
 				return
 			}
 		}
-
 		if opcode == 0x7e /*OP_CAT*/ ||
 			opcode == 0x7f /*OP_SUBSTR*/ ||
 			opcode == 0x80 /*OP_LEFT*/ ||
@@ -340,7 +328,6 @@ func ScriptToText(p []byte) (out []string, e error) {
 			e = errors.New(fmt.Sprint("ScriptToText: Unsupported opcode ", opcode))
 			return
 		}
-
 		var sel string
 		if 0 <= opcode && opcode <= OP_PUSHDATA4 {
 			if len(vchPushValue) == 0 {

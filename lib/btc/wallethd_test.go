@@ -1,18 +1,14 @@
 /*
 This code is taken from:
- * https://github.com/WeMeetAgain/go-hdwallet
+* https://github.com/WeMeetAgain/go-hdwallet
 */
-
 package btc
-
 import (
 	"bytes"
 	"encoding/hex"
 	"testing"
 )
-
 // implements https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#test-vectors
-
 var (
 	masterhex1                      = "000102030405060708090a0b0c0d0e0f"
 	mPub1                           = "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqsefD265TMg7usUDFdp6W1EGMcet8"
@@ -41,21 +37,18 @@ var (
 	m02147483647p12147483646p2Pub2  = "xpub6FnCn6nSzZAw5Tw7cgR9bi15UV96gLZhjDstkXXxvCLsUXBGXPdSnLFbdpq8p9HmGsApME5hQTZ3emM2rnY5agb9rXpVGyy3bdW6EEgAtqt"
 	m02147483647p12147483646p2Priv2 = "xprvA2nrNbFZABcdryreWet9Ea4LvTJcGsqrMzxHx98MMrotbir7yrKCEXw7nadnHM8Dq38EGfSh6dqA9QWTyefMLEcBYJUuekgW4BYPJcr9E7j"
 )
-
 func testChild(t *testing.T, key, refKey string, i uint32) {
 	childKey := StringChild(key, i)
 	if childKey != refKey {
 		t.Errorf("\n%s\nsupposed to be\n%s", childKey, refKey)
 	}
 }
-
 func testMasterKey(t *testing.T, seed []byte, refKey string) {
 	masterprv := MasterKey(seed, false).String()
 	if masterprv != refKey {
 		t.Errorf("\n%s\nsupposed to be\n%s", masterprv, refKey)
 	}
 }
-
 func testPub(t *testing.T, prv, refPub string) {
 	w, err := StringWallet(prv)
 	if err != nil {
@@ -66,7 +59,6 @@ func testPub(t *testing.T, prv, refPub string) {
 		t.Errorf("\n%s\nsupposed to be\n%s", pub, refPub)
 	}
 }
-
 func TestVector1(t *testing.T) {
 	seed, _ := hex.DecodeString(masterhex1)
 	t.Logf("master key")
@@ -98,7 +90,6 @@ func TestVector1(t *testing.T) {
 	t.Logf("fifth child -> pub")
 	testPub(t, m0p12p21000000000Priv1, m0p12p21000000000Pub1)
 }
-
 func TestVector2(t *testing.T) {
 	seed, _ := hex.DecodeString(masterhex2)
 	t.Logf("master key")
@@ -129,15 +120,12 @@ func TestVector2(t *testing.T) {
 	t.Logf("fifth child -> pub")
 	testPub(t, m02147483647p12147483646p2Priv2, m02147483647p12147483646p2Pub2)
 }
-
 func TestChildPub(t *testing.T) {
 	testChild(t, mPub2, m0Pub2, 0)
 }
-
 func TestChildPrv(t *testing.T) {
 	testChild(t, mPriv2, m0Priv2, 0)
 }
-
 func TestSerialize(t *testing.T) {
 	w, err := StringWallet(mPriv2)
 	if err != nil {
@@ -154,7 +142,6 @@ func TestSerialize(t *testing.T) {
 		t.Errorf("public key not de/reserializing properly")
 	}
 }
-
 // Used this site to create test http://gobittest.appspot.com/Address
 // Public key: 04CBCAA9C98C877A26977D00825C956A238E8DDDFBD322CCE4F74B0B5BD6ACE4A77BD3305D363C26F82C1E41C667E4B3561C06C60A2104D2B548E6DD059056AA51
 // Expected address: 1AEg9dFEw29kMgaN4BNHALu7AzX5XUfzSU
@@ -168,7 +155,6 @@ func TestAddress(t *testing.T) {
 		t.Errorf("\n%s\nshould be\n%s", addr, expectedAddr)
 	}
 }
-
 func TestStringCheck(t *testing.T) {
 	if err := StringCheck(mPub2); err != nil {
 		t.Errorf("%s should have been nil", err.Error())
@@ -177,17 +163,14 @@ func TestStringCheck(t *testing.T) {
 		t.Errorf("%s should have been nil", err.Error())
 	}
 }
-
 func TestChildren(t *testing.T) {
 	hdwal := MasterKey([]byte("Random seed"), false)
 	hdpub := hdwal.Pub()
-
 	for i := 0; i < 1000; i++ {
 		prv := hdwal.Child(uint32(i | 0x80000000))
 		if len(prv.Key) != 33 || prv.Key[0] != 0 {
 			t.Error("Bad private derivated key", i)
 		}
-
 		prv = hdwal.Child(uint32(i))
 		pub := hdpub.Child(uint32(i))
 		if len(prv.Key) != 33 || prv.Key[0] != 0 {
@@ -200,7 +183,6 @@ func TestChildren(t *testing.T) {
 		if !bytes.Equal(pub.Key, pu2) {
 			t.Error("Private/public mismatch on Child", i)
 		}
-
 		var p [32]byte
 		copy(p[:], prv.Key[1:])
 		pu2 = PublicFromPrivate(p[:], true)
@@ -209,15 +191,12 @@ func TestChildren(t *testing.T) {
 		}
 	}
 }
-
 // benchmarks
-
 func BenchmarkStringChildPub(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		StringChild(mPub2, 0)
 	}
 }
-
 func BenchmarkStringChildPrv(b *testing.B) {
 	var a uint32
 	a = 0x80000000
@@ -225,20 +204,17 @@ func BenchmarkStringChildPrv(b *testing.B) {
 		StringChild(mPriv1, a)
 	}
 }
-
 func BenchmarkStringPubString(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		w, _ := StringWallet(mPriv2)
 		_ = w.Pub().String()
 	}
 }
-
 func BenchmarkStringAddress(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		StringAddress(mPub2)
 	}
 }
-
 func BenchmarkStringCheck(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		StringCheck(mPub2)

@@ -1,10 +1,8 @@
 package bech32
-
 import (
 	"strings"
 	"testing"
 )
-
 var (
 	validChecksum = []string{
 		"A12UEL5L",
@@ -12,7 +10,6 @@ var (
 		"abcdef1qpzry9x8gf2tvdw0s3jn54khce6mua7lmqqqxw",
 		"11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqc8247j",
 		"split1checkupstagehandshakeupstreamerranterredcaperred2y9e3w"}
-
 	invalidChecksum = []string{
 		" 1nwldj5",
 		"\x7f1axkwrx",
@@ -23,7 +20,6 @@ var (
 		"li1dgmt3",
 		"de1lg7wt\xff"}
 )
-
 func TestValidChecksum(t *testing.T) {
 	for _, s := range validChecksum {
 		hrp, data := Decode(s)
@@ -41,7 +37,6 @@ func TestValidChecksum(t *testing.T) {
 		}
 	}
 }
-
 func TestInvalidChecksum(t *testing.T) {
 	for _, s := range invalidChecksum {
 		hrp, data := Decode(s)

@@ -1,22 +1,18 @@
 package bech32
-
 import (
 	"bytes"
 	"strings"
 	"testing"
 )
-
 type validAddressData struct {
 	address      string
 	scriptPubKey []byte
 }
-
 type invalidAddressData struct {
 	hrp           string
 	version       int
 	programLength int
 }
-
 var validAddress = []validAddressData{
 	{
 		address: "BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4",
@@ -53,7 +49,6 @@ var validAddress = []validAddressData{
 			0xb2, 0xa1, 0x87, 0x90, 0x5e, 0x52, 0x66, 0x36, 0x2b, 0x99, 0xd5,
 			0xe9, 0x1c, 0x6c, 0xe2, 0x4d, 0x16, 0x5d, 0xab, 0x93, 0xe8, 0x64,
 			0x33}}}
-
 var invalidAddress = []string{
 	"tc1qw508d6qejxtdg4y5r3zarvary0c5xw7kg3g4ty",
 	"bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t5",
@@ -65,14 +60,12 @@ var invalidAddress = []string{
 	"bc1zw508d6qejxtdg4y5r3zarvaryvqyzf3du",
 	"tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv",
 	"bc1gmk9yu"}
-
 var invalidAddressEnc = []invalidAddressData{
 	{hrp: "BC", version: 0, programLength: 20},
 	{hrp: "bc", version: 0, programLength: 21},
 	{hrp: "bc", version: 17, programLength: 32},
 	{hrp: "bc", version: 1, programLength: 1},
 	{hrp: "bc", version: 16, programLength: 41}}
-
 func segwitScriptPubKey(witver int, witprog []byte) (scriptpubkey []byte) {
 	scriptpubkey = make([]byte, len(witprog)+2)
 	if witver != 0 {
@@ -82,7 +75,6 @@ func segwitScriptPubKey(witver int, witprog []byte) (scriptpubkey []byte) {
 	copy(scriptpubkey[2:], witprog)
 	return
 }
-
 func TestValidAddress(t *testing.T) {
 	for _, rec := range validAddress {
 		hrp := "bc"
@@ -110,7 +102,6 @@ func TestValidAddress(t *testing.T) {
 		}
 	}
 }
-
 func TestInvalidAddress(t *testing.T) {
 	for _, s := range invalidAddress {
 		_, witprog := SegwitDecode("bc", s)
@@ -123,7 +114,6 @@ func TestInvalidAddress(t *testing.T) {
 		}
 	}
 }
-
 func TestInvalidAddressEnc(t *testing.T) {
 	for _, rec := range invalidAddressEnc {
 		rebuild := SegwitEncode(rec.hrp, rec.version, []byte{0})

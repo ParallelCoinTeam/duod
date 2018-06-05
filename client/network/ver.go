@@ -1,6 +1,5 @@
 // Package network -
 package network
-
 import (
 	"bytes"
 	"encoding/binary"
@@ -10,51 +9,40 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 )
-
 // IgnoreExternalIPFrom -
 var IgnoreExternalIPFrom = []string{}
-
 // SendVersion -
 func (c *OneConnection) SendVersion() {
 	b := bytes.NewBuffer([]byte{})
-
 	binary.Write(b, binary.LittleEndian, uint32(common.Version))
 	binary.Write(b, binary.LittleEndian, uint64(common.Services))
 	binary.Write(b, binary.LittleEndian, uint64(time.Now().Unix()))
-
 	b.Write(c.PeerAddr.NetAddr.Bytes())
 	if ExternalAddrLen() > 0 {
 		b.Write(BestExternalAddr())
 	} else {
 		b.Write(bytes.Repeat([]byte{0}, 26))
 	}
-
 	b.Write(nonce[:])
-
 	common.LockCfg()
 	btc.WriteVlen(b, uint64(len(common.UserAgent)))
 	b.Write([]byte(common.UserAgent))
 	common.UnlockCfg()
-
 	binary.Write(b, binary.LittleEndian, uint32(common.Last.BlockHeight()))
 	if !common.GetBool(&common.CFG.TXPool.Enabled) {
 		b.WriteByte(0) // don't notify me about txs
 	}
-
 	c.SendRawMsg("version", b.Bytes())
 }
-
 // IsDuod -
 func (c *OneConnection) IsDuod() bool {
 	return strings.HasPrefix(c.Node.Agent, "/Duod:")
 }
-
 // HandleVersion -
 func (c *OneConnection) HandleVersion(pl []byte) error {
 	if len(pl) >= 80 /*Up to, includiong, the nonce */ {
@@ -62,7 +50,6 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 			common.CountSafe("VerNonceUs")
 			return errors.New("Connecting to ourselves")
 		}
-
 		// check if we don't have this nonce yet
 		MutexNet.Lock()
 		for _, v := range OpenCons {
@@ -82,21 +69,17 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 			}
 		}
 		MutexNet.Unlock()
-
 		c.Mutex.Lock()
 		c.Node.Version = binary.LittleEndian.Uint32(pl[0:4])
 		if c.Node.Version < MinProtoVersion {
 			c.Mutex.Unlock()
 			return errors.New("Client version too low")
 		}
-
 		copy(c.Node.Nonce[:], pl[72:80])
 		c.Node.Services = binary.LittleEndian.Uint64(pl[4:12])
 		c.Node.Timestamp = binary.LittleEndian.Uint64(pl[12:20])
 		c.Node.ReportedIPv4 = binary.BigEndian.Uint32(pl[40:44])
-
 		useThisIP := sys.ValidIPv4(pl[40:44])
-
 		if len(pl) >= 86 {
 			le, of := btc.VLen(pl[80:])
 			of += 80
@@ -114,7 +97,6 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 		}
 		c.X.VersionReceived = true
 		c.Mutex.Unlock()
-
 		if useThisIP {
 			if bytes.Equal(pl[40:44], c.PeerAddr.IPv4[:]) {
 				if common.FLAG.Log {
@@ -147,7 +129,6 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 				useThisIP = false
 			}
 		}
-
 		if useThisIP {
 			ExternalIPmutex.Lock()
 			if _, known := ExternalIP4[c.Node.ReportedIPv4]; !known { // New IP
@@ -170,7 +151,6 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 			}
 			ExternalIPmutex.Unlock()
 		}
-
 	} else {
 		return errors.New("version message too short")
 	}

@@ -1,5 +1,4 @@
 package chain
-
 const (
 	// DebugWasted -
 	DebugWasted = 1 << 0
@@ -18,13 +17,10 @@ const (
 	// DebugScrErr -
 	DebugScrErr = 1 << 7
 )
-
 var dbgmask uint32
-
 func don(b uint32) bool {
 	return (dbgmask & b) != 0
 }
-
 // DbgSwitch -
 func DbgSwitch(b uint32, on bool) {
 	if on {

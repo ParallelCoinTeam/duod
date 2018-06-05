@@ -1,20 +1,16 @@
 /*
 This code originates from:
- * https://github.com/WeMeetAgain/go-hdwallet
+* https://github.com/WeMeetAgain/go-hdwallet
 */
-
 package btc
-
 import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
-
 	"github.com/ParallelCoinTeam/duod/lib/secp256k1"
 )
-
 const (
 	// Public -
 	Public = uint32(0x0488B21E)
@@ -25,7 +21,6 @@ const (
 	// TestPrivate -
 	TestPrivate = uint32(0x04358394)
 )
-
 // HDWallet defines the components of a hierarchical deterministic wallet
 type HDWallet struct {
 	Prefix   uint32
@@ -35,14 +30,12 @@ type HDWallet struct {
 	ChCode   []byte //32 bytes
 	Key      []byte //33 bytes
 }
-
 // Child returns the ith child of wallet w. Values of i >= 2^31
 // signify private key derivation. Attempting private key derivation
 // with a public key will throw an error.
 func (w *HDWallet) Child(i uint32) (res *HDWallet) {
 	var ha, newkey []byte
 	var chksum [20]byte
-
 	if w.Prefix == Private || w.Prefix == TestPrivate {
 		pub := PublicFromPrivate(w.Key[1:], true)
 		mac := hmac.New(sha512.New, w.ChCode)
@@ -77,7 +70,6 @@ func (w *HDWallet) Child(i uint32) (res *HDWallet) {
 	res.Key = newkey
 	return
 }
-
 // Serialize returns the serialized form of the wallet.
 // vbytes || depth || fingerprint || i || chaincode || key
 func (w *HDWallet) Serialize() []byte {
@@ -92,12 +84,10 @@ func (w *HDWallet) Serialize() []byte {
 	ShaHash(b.Bytes(), tmp[:])
 	return append(b.Bytes(), tmp[:4]...)
 }
-
 // String returns the base58-encoded string form of the wallet.
 func (w *HDWallet) String() string {
 	return EncodeBase58(w.Serialize())
 }
-
 // StringWallet returns a wallet given a base58-encoded extended key
 func StringWallet(data string) (*HDWallet, error) {
 	dbin := DecodeBase58(data)
@@ -118,7 +108,6 @@ func StringWallet(data string) (*HDWallet, error) {
 	r.Key = dbin[45:78]
 	return r, nil
 }
-
 // Pub returns a new wallet which is the public key version of w.
 // If w is a public key, Pub returns a copy of w
 func (w *HDWallet) Pub() *HDWallet {
@@ -130,7 +119,6 @@ func (w *HDWallet) Pub() *HDWallet {
 	return &HDWallet{Prefix: Public, Depth: w.Depth, Checksum: w.Checksum,
 		I: w.I, ChCode: w.ChCode, Key: PublicFromPrivate(w.Key[1:], true)}
 }
-
 // StringChild returns the ith base58-encoded extended key of a base58-encoded extended key.
 func StringChild(data string, i uint32) string {
 	w, err := StringWallet(data)
@@ -140,17 +128,14 @@ func StringChild(data string, i uint32) string {
 	w = w.Child(i)
 	return w.String()
 }
-
 //StringAddress returns the Bitcoin address of a base58-encoded extended key.
 func StringAddress(data string) (string, error) {
 	w, err := StringWallet(data)
 	if err != nil {
 		return "", err
 	}
-
 	return NewAddrFromPubkey(w.Key, AddrVerPubkey(w.Prefix == TestPublic || w.Prefix == TestPrivate)).String(), nil
 }
-
 // PubAddr returns base58 encoded public address of the given HD key
 func (w *HDWallet) PubAddr() *Addr {
 	var pub []byte
@@ -161,7 +146,6 @@ func (w *HDWallet) PubAddr() *Addr {
 	}
 	return NewAddrFromPubkey(pub, AddrVerPubkey(w.Prefix == TestPublic || w.Prefix == TestPrivate))
 }
-
 // MasterKey returns a new wallet given a random seed.
 func MasterKey(seed []byte, testnet bool) *HDWallet {
 	key := []byte("Bitcoin seed")
@@ -176,25 +160,21 @@ func MasterKey(seed []byte, testnet bool) *HDWallet {
 	}
 	return res
 }
-
 // StringCheck is a validation check of a base58-encoded extended key.
 func StringCheck(key string) error {
 	return ByteCheck(DecodeBase58(key))
 }
-
 // ByteCheck Verifies consistency of a serialized HD address
 func ByteCheck(dbin []byte) error {
 	// check proper length
 	if len(dbin) != 82 {
 		return errors.New("ByteCheck: Unexpected length")
 	}
-
 	// check for correct Public or Private Prefix
 	vb := binary.BigEndian.Uint32(dbin[:4])
 	if vb != Public && vb != Private && vb != TestPublic && vb != TestPrivate {
 		return errors.New("ByteCheck: Unexpected Prefix")
 	}
-
 	// if Public, check x coord is on curve
 	if vb == Public || vb == TestPublic {
 		var xy secp256k1.XY
@@ -205,7 +185,6 @@ func ByteCheck(dbin []byte) error {
 	}
 	return nil
 }
-
 // HDKeyPrefix Returns first 32 bits, as expected for sepcific HD address
 func HDKeyPrefix(private, testnet bool) uint32 {
 	if private {
@@ -218,5 +197,4 @@ func HDKeyPrefix(private, testnet bool) uint32 {
 		return TestPublic
 	}
 	return Public
-
 }

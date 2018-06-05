@@ -1,5 +1,4 @@
 package chain
-
 const (
 	// BlockMapInitLen -
 	BlockMapInitLen = 500e3

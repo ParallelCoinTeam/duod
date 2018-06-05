@@ -1,16 +1,13 @@
 // Package network -
 package network
-
 import (
 	"bytes"
 	"errors"
 	"fmt"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 // IIdx -
 func (tx *OneTxToSend) IIdx(key uint64) int {
 	for i, o := range tx.TxIn {
@@ -20,7 +17,6 @@ func (tx *OneTxToSend) IIdx(key uint64) int {
 	}
 	return -1
 }
-
 // UnMarkChildrenForMem - Clear MemInput flag of all the children (used when a tx is mined)
 func (tx *OneTxToSend) UnMarkChildrenForMem() {
 	// Go through all the tx's outputs and unmark MemInputs in txs that have been spending it
@@ -55,7 +51,6 @@ func (tx *OneTxToSend) UnMarkChildrenForMem() {
 		}
 	}
 }
-
 // This function is called for each tx mined in a new block
 func txMined(tx *btc.Tx) (wtg *OneWaitingList) {
 	h := tx.Hash
@@ -76,7 +71,6 @@ func txMined(tx *btc.Tx) (wtg *OneWaitingList) {
 		common.CountSafe("TxMinedPending")
 		delete(TransactionsPending, h.BIdx())
 	}
-
 	// Go through all the inputs and make sure we are not leaving them in SpentOutputs
 	for i := range tx.TxIn {
 		idx := tx.TxIn[i].Input.UIdx()
@@ -97,11 +91,9 @@ func txMined(tx *btc.Tx) (wtg *OneWaitingList) {
 			delete(SpentOutputs, idx)
 		}
 	}
-
 	wtg = WaitingForInputs[h.BIdx()]
 	return
 }
-
 // BlockMined - Removes all the block's tx from the mempool
 func BlockMined(bl *btc.Block) {
 	wtgs := make([]*OneWaitingList, len(bl.Txs)-1)
@@ -115,7 +107,6 @@ func BlockMined(bl *btc.Block) {
 		}
 	}
 	TxMutex.Unlock()
-
 	// Try to redo waiting txs
 	if wtgCount > 0 {
 		common.CountSafeAdd("TxMinedGotInput", uint64(wtgCount))
@@ -123,10 +114,8 @@ func BlockMined(bl *btc.Block) {
 			RetryWaitingForInput(wtg)
 		}
 	}
-
 	expireTxsNow = true
 }
-
 // SendGetMP -
 func (c *OneConnection) SendGetMP() error {
 	TxMutex.Lock()
@@ -147,18 +136,15 @@ func (c *OneConnection) SendGetMP() error {
 	TxMutex.Unlock()
 	return c.SendRawMsg("getmp", b.Bytes())
 }
-
 // ProcessGetMP -
 func (c *OneConnection) ProcessGetMP(pl []byte) {
 	br := bytes.NewBuffer(pl)
-
 	cnt, er := btc.ReadVLen(br)
 	if er != nil {
 		L.Debug("getmp message does not have the length field")
 		c.DoS("GetMPError1")
 		return
 	}
-
 	hasThisOne := make(map[BIDX]bool, cnt)
 	for i := 0; i < int(cnt); i++ {
 		var idx BIDX
@@ -169,10 +155,8 @@ func (c *OneConnection) ProcessGetMP(pl []byte) {
 		}
 		hasThisOne[idx] = true
 	}
-
 	var dataSentSoFar int
 	var redo [1]byte
-
 	TxMutex.Lock()
 	for k, v := range TransactionsToSend {
 		if c.BytesToSent() > SendBufSize/4 {
@@ -185,6 +169,5 @@ func (c *OneConnection) ProcessGetMP(pl []byte) {
 		}
 	}
 	TxMutex.Unlock()
-
 	c.SendRawMsg("getmpdone", redo[:])
 }

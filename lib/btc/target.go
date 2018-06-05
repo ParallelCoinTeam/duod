@@ -1,9 +1,7 @@
 package btc
-
 import (
 	"math/big"
 )
-
 // SetCompact -
 func SetCompact(nCompact uint32) (res *big.Int) {
 	size := nCompact >> 24
@@ -21,7 +19,6 @@ func SetCompact(nCompact uint32) (res *big.Int) {
 	}
 	return res
 }
-
 // GetDifficulty -
 func GetDifficulty(bits uint32) (diff float64) {
 	shift := int(bits>>24) & 0xff
@@ -36,20 +33,16 @@ func GetDifficulty(bits uint32) (diff float64) {
 	}
 	return
 }
-
 // GetCompact -
 func GetCompact(b *big.Int) uint32 {
-
 	size := uint32(len(b.Bytes()))
 	var compact uint32
-
 	if size <= 3 {
 		compact = uint32(b.Int64() << uint(8*(3-size)))
 	} else {
 		b = new(big.Int).Rsh(b, uint(8*(size-3)))
 		compact = uint32(b.Int64())
 	}
-
 	// The 0x00800000 bit denotes the sign.
 	// Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
 	if (compact & 0x00800000) != 0 {
@@ -62,7 +55,6 @@ func GetCompact(b *big.Int) uint32 {
 	}
 	return compact
 }
-
 // CheckProofOfWork -
 func CheckProofOfWork(hash *Uint256, bits uint32) bool {
 	return hash.BigInt().Cmp(SetCompact(bits)) <= 0

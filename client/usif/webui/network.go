@@ -1,5 +1,4 @@
 package webui
-
 import (
 	"encoding/json"
 	"fmt"
@@ -9,38 +8,29 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 )
-
 func pNet(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	netPage := loadTemplate("net.html")
-
 	network.MutexNet.Lock()
 	netPage = strings.Replace(netPage, "{LISTEN_TCP}", fmt.Sprint(common.IsListenTCP(), network.TCPServerStarted), 1)
 	netPage = strings.Replace(netPage, "{EXTERNAL_ADDR}", btc.NewNetAddr(network.BestExternalAddr()).String(), 1)
-
 	network.MutexNet.Unlock()
-
 	d, _ := ioutil.ReadFile(common.DuodHomeDir + "friends.txt")
 	netPage = strings.Replace(netPage, "{FRIENDS_TXT}", html.EscapeString(string(d)), 1)
-
 	writeHTMLHead(w, r)
 	w.Write([]byte(netPage))
 	writeHTMLTail(w)
 }
-
 func jsonNetCon(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	defer func() {
 		if r := recover(); r != nil {
 			err, ok := r.(error)
@@ -51,10 +41,8 @@ func jsonNetCon(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(string(debug.Stack()))
 		}
 	}()
-
 	network.MutexNet.Lock()
 	defer network.MutexNet.Unlock()
-
 	netCons := make([]network.ConnInfo, len(network.OpenCons))
 	tmp, _, _ := network.GetSortedConnections()
 	i := len(netCons)
@@ -63,7 +51,6 @@ func jsonNetCon(w http.ResponseWriter, r *http.Request) {
 		v.Conn.GetStats(&netCons[i])
 		netCons[i].HasImmunity = v.MinutesOnline < network.OnlineImmunityMinutes
 	}
-
 	bx, er := json.Marshal(netCons)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -71,25 +58,19 @@ func jsonNetCon(w http.ResponseWriter, r *http.Request) {
 	} else {
 		println(er.Error())
 	}
-
 }
-
 func jsonPeersT(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	if len(r.Form["id"]) == 0 {
 		return
 	}
-
 	conid, e := strconv.ParseUint(r.Form["id"][0], 10, 32)
 	if e != nil {
 		return
 	}
-
 	var res *network.ConnInfo
-
 	network.MutexNet.Lock()
 	for _, v := range network.OpenCons {
 		if uint32(conid) == v.ConnID {
@@ -99,7 +80,6 @@ func jsonPeersT(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	network.MutexNet.Unlock()
-
 	if res != nil {
 		bx, er := json.Marshal(&res)
 		if er == nil {
@@ -110,17 +90,14 @@ func jsonPeersT(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
 func jsonBandwidth(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	type oneExtIP struct {
 		IP               string
 		Count, Timestamp uint
 	}
-
 	var out struct {
 		OpenConnsTotal  int
 		OpenConnsOut    uint32
@@ -134,7 +111,6 @@ func jsonBandwidth(w http.ResponseWriter, r *http.Request) {
 		ExternalIP      []oneExtIP
 		GetMPInProgress bool
 	}
-
 	common.LockBw()
 	common.TickRecv()
 	common.TickSent()
@@ -145,22 +121,18 @@ func jsonBandwidth(w http.ResponseWriter, r *http.Request) {
 	out.ULSpeedMax = common.UploadLimit()
 	out.ULTotal = common.UlBytesTotal
 	common.UnlockBw()
-
 	network.MutexNet.Lock()
 	out.OpenConnsTotal = len(network.OpenCons)
 	out.OpenConnsOut = network.OutConsActive
 	out.OpenConnsIn = network.InConsActive
 	network.MutexNet.Unlock()
-
 	arr := network.GetExternalIPs()
 	for _, rec := range arr {
 		out.ExternalIP = append(out.ExternalIP, oneExtIP{
 			IP:    fmt.Sprintf("%d.%d.%d.%d", byte(rec.IP>>24), byte(rec.IP>>16), byte(rec.IP>>8), byte(rec.IP)),
 			Count: rec.Cnt, Timestamp: rec.Tim})
 	}
-
 	out.GetMPInProgress = len(network.GetMPInProgressTicket) != 0
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -169,15 +141,12 @@ func jsonBandwidth(w http.ResponseWriter, r *http.Request) {
 		println(er.Error())
 	}
 }
-
 // jsonBWChar -
 func jsonBWChar(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	var cnt uint64
-
 	if len(r.Form["seconds"]) > 0 {
 		cnt, _ = strconv.ParseUint(r.Form["seconds"][0], 10, 32)
 	}
@@ -186,17 +155,14 @@ func jsonBWChar(w http.ResponseWriter, r *http.Request) {
 	} else if cnt > 300 {
 		cnt = 300
 	}
-
 	var out struct {
 		DL           [200]uint64 // max 200 records (from 200 seconds to ~16.7 hours)
 		UL           [200]uint64
 		MaxDL, MaxUL uint64
 	}
-
 	common.LockBw()
 	common.TickRecv()
 	common.TickSent()
-
 	idx := uint16(common.DlBytesPrevSecIdx)
 	for i := range out.DL {
 		var sum uint64
@@ -209,7 +175,6 @@ func jsonBWChar(w http.ResponseWriter, r *http.Request) {
 		}
 		out.DL[i] = sum / cnt
 	}
-
 	idx = uint16(common.UlBytesPrevSecIdx)
 	for i := range out.UL {
 		var sum uint64
@@ -222,9 +187,7 @@ func jsonBWChar(w http.ResponseWriter, r *http.Request) {
 		}
 		out.UL[i] = sum / cnt
 	}
-
 	common.UnlockBw()
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}

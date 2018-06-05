@@ -1,11 +1,8 @@
 package chain
-
 import (
 	"errors"
-
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 )
-
 func nextBlock(ch *Chain, hash, header []byte, height, blen, txs uint32) {
 	bh := btc.NewUint256(hash[:])
 	if _, ok := ch.BlockIndex[bh.BIdx()]; ok {
@@ -20,7 +17,6 @@ func nextBlock(ch *Chain, hash, header []byte, height, blen, txs uint32) {
 	copy(v.BlockHeader[:], header)
 	ch.BlockIndex[v.BlockHash.BIdx()] = v
 }
-
 // Loads block index from the disk
 func (ch *Chain) loadBlockIndex() {
 	ch.BlockIndex = make(map[[btc.Uint256IdxLen]byte]*BlockTreeNode, BlockMapInitLen)
@@ -28,7 +24,6 @@ func (ch *Chain) loadBlockIndex() {
 	ch.BlockTreeRoot.BlockHash = ch.Genesis
 	ch.RebuildGenesisHeader()
 	ch.BlockIndex[ch.Genesis.BIdx()] = ch.BlockTreeRoot
-
 	ch.Blocks.LoadBlockIndex(ch, nextBlock)
 	tlb := ch.Unspent.LastBlockHash
 	//println("Building tree from", len(ch.BlockIndex), "nodes")
@@ -40,7 +35,6 @@ func (ch *Chain) loadBlockIndex() {
 			// skip root block (should be only one)
 			continue
 		}
-
 		par, ok := ch.BlockIndex[btc.NewUint256(v.BlockHeader[4:36]).BIdx()]
 		if !ok {
 			println("ERROR: Block", v.Height, v.BlockHash.String(), "has no Parent")
@@ -62,9 +56,7 @@ func (ch *Chain) loadBlockIndex() {
 		panic("Last Block Hash not found")
 	}
 	ch.SetLast(last)
-
 }
-
 // GetRawTx -
 func (ch *Chain) GetRawTx(BlockHeight uint32, txid *btc.Uint256) (data []byte, er error) {
 	// Find the block with the indicated Height in the main tree
@@ -80,25 +72,21 @@ func (ch *Chain) GetRawTx(BlockHeight uint32, txid *btc.Uint256) (data []byte, e
 		n = n.Parent
 	}
 	ch.BlockIndexAccess.Unlock()
-
 	bd, _, e := ch.Blocks.BlockGet(n.BlockHash)
 	if e != nil {
 		er = errors.New("GetRawTx: block not in the database")
 		return
 	}
-
 	bl, e := btc.NewBlock(bd)
 	if e != nil {
 		er = errors.New("GetRawTx: NewBlock failed")
 		return
 	}
-
 	e = bl.BuildTxList()
 	if e != nil {
 		er = errors.New("GetRawTx: BuildTxList failed")
 		return
 	}
-
 	// Find the transaction we need and store it in the file
 	for i := range bl.Txs {
 		if bl.Txs[i].Hash.Equal(txid) {

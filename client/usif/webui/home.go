@@ -1,12 +1,10 @@
 package webui
-
 import (
 	"encoding/json"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/client/usif"
@@ -15,45 +13,36 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
-
 var (
 	mutexHrate sync.Mutex
 	lastHrate  float64
 	nextHrate  time.Time
 )
-
 func pHome(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	// The handler also gets called for /favicon.ico
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-
 	s := loadTemplate("home.html")
-
 	if !common.CFG.WebUI.ServerMode {
 		common.LockCfg()
 		dat, _ := json.MarshalIndent(&common.CFG, "", "    ")
 		common.UnlockCfg()
 		s = strings.Replace(s, "{ConfigFile}", strings.Replace(string(dat), ",\"", ", \"", -1), 1)
 	}
-
 	s = strings.Replace(s, "<!--PUB_AUTH_KEY-->", common.PublicKey, 1)
-
 	writeHTMLHead(w, r)
 	w.Write([]byte(s))
 	writeHTMLTail(w)
 }
-
 func jsonStatus(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	var out struct {
 		Height                 uint32
 		Hash                   string
@@ -86,7 +75,6 @@ func jsonStatus(w http.ResponseWriter, r *http.Request) {
 	out.LastHeaderHeight = network.LastCommitedHeader.Height
 	network.MutexRcv.Unlock()
 	out.BlockChainSynchronized = common.GetBool(&common.BlockChainSynchronized)
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -95,12 +83,10 @@ func jsonStatus(w http.ResponseWriter, r *http.Request) {
 		println(er.Error())
 	}
 }
-
 func jsonSystem(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	var out struct {
 		BlocksCached     int
 		BlocksToGet      int
@@ -118,7 +104,6 @@ func jsonSystem(w http.ResponseWriter, r *http.Request) {
 		NetworkHashRate  float64
 		SavingUTXO       bool
 	}
-
 	out.BlocksCached = network.CachedBlocksLen.Get()
 	network.MutexRcv.Lock()
 	out.BlocksToGet = len(network.BlocksToGet)
@@ -135,7 +120,6 @@ func jsonSystem(w http.ResponseWriter, r *http.Request) {
 	network.MutexRcv.Lock()
 	out.LastHeaderHeight = network.LastCommitedHeader.Height
 	network.MutexRcv.Unlock()
-
 	mutexHrate.Lock()
 	if nextHrate.IsZero() || time.Now().After(nextHrate) {
 		lastHrate = usif.GetNetworkHashRateNum()
@@ -143,9 +127,7 @@ func jsonSystem(w http.ResponseWriter, r *http.Request) {
 	}
 	out.NetworkHashRate = lastHrate
 	mutexHrate.Unlock()
-
 	out.SavingUTXO = common.BlockChain.Unspent.WritingInProgress.Get()
-
 	bx, er := json.Marshal(out)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}

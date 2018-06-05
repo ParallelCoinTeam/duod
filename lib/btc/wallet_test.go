@@ -1,12 +1,10 @@
 package btc
-
 import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
 )
-
 func TestGetPublic(t *testing.T) {
 	prv, _ := hex.DecodeString("bb87a5e3e786ecd05f4901ef7ef32726570bfd176ada37a31ef2861db2834d7e")
 	pub, _ := hex.DecodeString("02a60d70cfba37177d8239d018185d864b2bdd0caf5e175fd4454cc006fd2d75ac")
@@ -15,7 +13,6 @@ func TestGetPublic(t *testing.T) {
 		t.Error("PublicFromPrivate failed")
 	}
 }
-
 func TestDeterministicPublic(t *testing.T) {
 	secret, _ := hex.DecodeString("4438addb9b147349432466d89d81f4dae1fc1fd9bcb764d2854f303931796c2d")
 	pubkey, _ := hex.DecodeString("03578936ea365dd8921fe0e05eb4d2af9a0d333312ec01ae950f9450af09cef4d4")
@@ -25,39 +22,32 @@ func TestDeterministicPublic(t *testing.T) {
 		t.Error("TestDeterministicPublic failed")
 	}
 }
-
 func TestDeterministicWalletType2(t *testing.T) {
 	secret := make([]byte, 32)
 	rand.Read(secret)
-
 	privateKey := make([]byte, 32)
 	rand.Read(privateKey)
-
 	publicKey := PublicFromPrivate(privateKey, true)
 	for i := 0; i < 50; i++ {
 		privateKey = DeriveNextPrivate(privateKey, secret)
 		if privateKey == nil {
 			t.Fatal("DeriveNextPrivate fail")
 		}
-
 		publicKey = DeriveNextPublic(publicKey, secret)
 		if publicKey == nil {
 			t.Fatal("DeriveNextPublic fail")
 		}
-
 		// verify the public key matching the private key
 		pub2 := PublicFromPrivate(privateKey, true)
 		if !bytes.Equal(publicKey, pub2) {
 			t.Error(i, "public key mismatch", hex.EncodeToString(pub2), hex.EncodeToString(publicKey))
 		}
-
 		// make sure that you can sign and verify with it
 		if e := VerifyKeyPair(privateKey, publicKey); e != nil {
 			t.Error(i, "verify key failed", e.Error())
 		}
 	}
 }
-
 func BenchmarkPrivToPubCompr(b *testing.B) {
 	var prv [32]byte
 	for i := 0; i < b.N; i++ {
@@ -65,7 +55,6 @@ func BenchmarkPrivToPubCompr(b *testing.B) {
 		PublicFromPrivate(prv[:], true)
 	}
 }
-
 func BenchmarkPrivToPubUncom(b *testing.B) {
 	var prv [32]byte
 	for i := 0; i < b.N; i++ {
@@ -73,7 +62,6 @@ func BenchmarkPrivToPubUncom(b *testing.B) {
 		PublicFromPrivate(prv[:], false)
 	}
 }
-
 func BenchmarkDeriveNextPrivate(b *testing.B) {
 	var sec [32]byte
 	prv := make([]byte, 32)
@@ -84,7 +72,6 @@ func BenchmarkDeriveNextPrivate(b *testing.B) {
 		prv = DeriveNextPrivate(prv, sec[:])
 	}
 }
-
 func BenchmarkDeriveNextPublic(b *testing.B) {
 	var prv, sec [32]byte
 	ShaHash(prv[:], prv[:])
@@ -95,7 +82,6 @@ func BenchmarkDeriveNextPublic(b *testing.B) {
 		pub = DeriveNextPublic(pub, sec[:])
 	}
 }
-
 func TestDecodePrivateKey(t *testing.T) {
 	// mainnet compressed
 	pk, er := DecodePrivateAddr("L2zsCZKchUMJ9BS7MVyo8gLGV26rYtgFZskSitwkptk4F1g3KtjN")
@@ -114,7 +100,6 @@ func TestDecodePrivateKey(t *testing.T) {
 	if pk.String() != "L2zsCZKchUMJ9BS7MVyo8gLGV26rYtgFZskSitwkptk4F1g3KtjN" {
 		t.Error("Unexpected endode result")
 	}
-
 	// testnet uncompressed
 	pk, er = DecodePrivateAddr("92fqqcuu2iSqjfAFifVJ7yxDAkUgFEMgu19YgzLxUqXmbJQRrWp")
 	if er != nil {
@@ -132,7 +117,6 @@ func TestDecodePrivateKey(t *testing.T) {
 	if pk.String() != "92fqqcuu2iSqjfAFifVJ7yxDAkUgFEMgu19YgzLxUqXmbJQRrWp" {
 		t.Error("Unexpected endode result")
 	}
-
 	// litecoin compressed
 	pk, er = DecodePrivateAddr("TAtSTnmpQFUKRH56MN7mn6iU8tJpcok7uCP2Hcab599H2pyDZKfY")
 	if er != nil {
@@ -150,5 +134,4 @@ func TestDecodePrivateKey(t *testing.T) {
 	if pk.String() != "TAtSTnmpQFUKRH56MN7mn6iU8tJpcok7uCP2Hcab599H2pyDZKfY" {
 		t.Error("Unexpected endode result")
 	}
-
 }

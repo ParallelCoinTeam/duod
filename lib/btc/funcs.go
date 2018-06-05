@@ -1,5 +1,4 @@
 package btc
-
 import (
 	"bytes"
 	"crypto/sha256"
@@ -12,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 )
-
 func allZeros(b []byte) bool {
 	for i := range b {
 		if b[i] != 0 {
@@ -21,7 +19,6 @@ func allZeros(b []byte) bool {
 	}
 	return true
 }
-
 // PutVlen - Puts var_length field into the given buffer
 func PutVlen(b []byte, vl int) uint32 {
 	uvl := uint32(vl)
@@ -42,7 +39,6 @@ func PutVlen(b []byte, vl int) uint32 {
 	b[4] = byte(uvl >> 24)
 	return 5
 }
-
 // PutULe -
 func PutULe(b []byte, uvl uint64) int {
 	if uvl < 0xfd {
@@ -63,7 +59,6 @@ func PutULe(b []byte, uvl uint64) int {
 	binary.LittleEndian.PutUint64(b[1:9], uvl)
 	return 9
 }
-
 // VLenSize - How many bytes would take to write this VLen
 func VLenSize(uvl uint64) int {
 	if uvl < 0xfd {
@@ -77,7 +72,6 @@ func VLenSize(uvl uint64) int {
 	}
 	return 9
 }
-
 // VLen - Returns var_int and number of bytes that the var_int took
 // If there is not enough bytes in the buffer, it will panic
 func VLen(b []byte) (le int, varIntSiz int) {
@@ -92,7 +86,6 @@ func VLen(b []byte) (le int, varIntSiz int) {
 		return int(b[0]), 1
 	}
 }
-
 // VULe - Returns var_uint and number of bytes that the var_uint took
 // If there is not enough bytes in the buffer, it will panic
 func VULe(b []byte) (le uint64, varIntSiz int) {
@@ -107,7 +100,6 @@ func VULe(b []byte) (le uint64, varIntSiz int) {
 		return uint64(b[0]), 1
 	}
 }
-
 // CalcMerkle -
 func CalcMerkle(mtr [][32]byte) (res []byte, mutated bool) {
 	var j, i2 int
@@ -127,7 +119,6 @@ func CalcMerkle(mtr [][32]byte) (res []byte, mutated bool) {
 			tmp := s.Sum(nil)
 			s.Reset()
 			s.Write(tmp)
-
 			var sum [32]byte
 			copy(sum[:], s.Sum(nil))
 			mtr = append(mtr, sum)
@@ -137,7 +128,6 @@ func CalcMerkle(mtr [][32]byte) (res []byte, mutated bool) {
 	res = mtr[len(mtr)-1][:]
 	return
 }
-
 // GetWitnessMerkle -
 func GetWitnessMerkle(txs []*Tx) (res []byte, mutated bool) {
 	mtr := make([][32]byte, len(txs), 3*len(txs)) // make the buffer 3 times longer as we use append() inside CalcMerkle
@@ -148,7 +138,6 @@ func GetWitnessMerkle(txs []*Tx) (res []byte, mutated bool) {
 	res, mutated = CalcMerkle(mtr)
 	return
 }
-
 // ReadAll -
 func ReadAll(rd io.Reader, b []byte) (er error) {
 	var n int
@@ -160,23 +149,18 @@ func ReadAll(rd io.Reader, b []byte) (er error) {
 	}
 	return
 }
-
 // ReadVLen - Reads varLen from the given reader
 func ReadVLen(b io.Reader) (res uint64, e error) {
 	var buf [8]byte
-
 	if e = ReadAll(b, buf[:1]); e != nil {
 		//println("ReadVLen1 error:", e.Error())
 		return
 	}
-
 	if buf[0] < 0xfd {
 		res = uint64(buf[0])
 		return
 	}
-
 	c := 2 << (2 - (0xff - buf[0]))
-
 	if e = ReadAll(b, buf[:c]); e != nil {
 		println("ReadVLen1 error:", e.Error())
 		return
@@ -186,7 +170,6 @@ func ReadVLen(b io.Reader) (res uint64, e error) {
 	}
 	return
 }
-
 // WriteVlen - Writes var_length field into the given writer
 func WriteVlen(b io.Writer, varLen uint64) {
 	if varLen < 0xfd {
@@ -206,26 +189,21 @@ func WriteVlen(b io.Writer, varLen uint64) {
 	b.Write([]byte{0xff})
 	binary.Write(b, binary.LittleEndian, varLen)
 }
-
 // WritePutLen - Writes opcode to put a specific number of bytes to stack
 func WritePutLen(b io.Writer, dataLen uint32) {
 	switch {
 	case dataLen <= OP_PUSHDATA1:
 		b.Write([]byte{byte(dataLen)})
-
 	case dataLen < 0x100:
 		b.Write([]byte{OP_PUSHDATA1, byte(dataLen)})
-
 	case dataLen < 0x10000:
 		b.Write([]byte{OP_PUSHDATA2})
 		binary.Write(b, binary.LittleEndian, uint16(dataLen))
-
 	default:
 		b.Write([]byte{OP_PUSHDATA4})
 		binary.Write(b, binary.LittleEndian, uint32(dataLen))
 	}
 }
-
 // ReadString - Read bitcoin protocol string
 func ReadString(rd io.Reader) (s string, e error) {
 	var le uint64
@@ -240,44 +218,34 @@ func ReadString(rd io.Reader) (s string, e error) {
 	}
 	return
 }
-
 // ParseMessageSignature - Takes a base64 encoded bitcoin generated signature and decodes it
 func ParseMessageSignature(encsig string) (nv byte, sig *Signature, er error) {
 	var sd []byte
-
 	sd, er = base64.StdEncoding.DecodeString(encsig)
 	if er != nil {
 		return
 	}
-
 	if len(sd) != 65 {
 		er = errors.New("The decoded signature is not 65 bytes long")
 		return
 	}
-
 	nv = sd[0]
-
 	sig = new(Signature)
 	sig.R.SetBytes(sd[1:33])
 	sig.S.SetBytes(sd[33:65])
-
 	if nv < 27 || nv > 34 {
 		er = errors.New("nv out of range")
 	}
-
 	return
 }
-
 // IsPayToScript -
 func IsPayToScript(scr []byte) bool {
 	return len(scr) == 23 && scr[0] == OP_HASH160 && scr[1] == 0x14 && scr[22] == OP_EQUAL
 }
-
 // StringToSatoshis - Parses a floating number string to return uint64 value expressed in Satoshi's
 // Using strconv.ParseFloat followed by uint64(val*1e8) is not precise enough.
 func StringToSatoshis(s string) (val uint64, er error) {
 	var big, small uint64
-
 	ss := strings.Split(s, ".")
 	if len(ss) == 1 {
 		val, er = strconv.ParseUint(ss[0], 10, 64)
@@ -291,7 +259,6 @@ func StringToSatoshis(s string) (val uint64, er error) {
 		println("Incorrect amount", s)
 		os.Exit(1)
 	}
-
 	if len(ss[1]) > 8 {
 		er = errors.New("Too many decimal points")
 		return
@@ -299,30 +266,24 @@ func StringToSatoshis(s string) (val uint64, er error) {
 	if len(ss[1]) < 8 {
 		ss[1] += strings.Repeat("0", 8-len(ss[1]))
 	}
-
 	small, er = strconv.ParseUint(ss[1], 10, 64)
 	if er != nil {
 		return
 	}
-
 	big, er = strconv.ParseUint(ss[0], 10, 64)
 	if er == nil {
 		val = 1e8*big + small
 	}
-
 	return
 }
-
 // UintToBtc - Converts value of satoshis to a BTC-value string (with 8 decimal points)
 func UintToBtc(val uint64) string {
 	return fmt.Sprintf("%d.%08d", val/1e8, val%1e8)
 }
-
 // IsP2SH - Return true if the given PK_script is a standard P2SH
 func IsP2SH(d []byte) bool {
 	return len(d) == 23 && d[0] == 0xa9 && d[1] == 20 && d[22] == 0x87
 }
-
 // IsUsefullOutScript - Returns true if the given PK_script is anyhow usefull to Duod's node
 func IsUsefullOutScript(v []byte) bool {
 	if len(v) == 25 && v[0] == 0x76 && v[1] == 0xa9 && v[2] == 0x14 && v[23] == 0x88 && v[24] == 0xac {
@@ -333,7 +294,6 @@ func IsUsefullOutScript(v []byte) bool {
 	}
 	return false
 }
-
 // GetOpcode -
 func GetOpcode(b []byte) (opcode int, ret []byte, pc int, e error) {
 	// Read instruction
@@ -343,7 +303,6 @@ func GetOpcode(b []byte) (opcode int, ret []byte, pc int, e error) {
 	}
 	opcode = int(b[pc])
 	pc++
-
 	if opcode <= OP_PUSHDATA4 {
 		size := 0
 		if opcode < OP_PUSHDATA1 {
@@ -378,10 +337,8 @@ func GetOpcode(b []byte) (opcode int, ret []byte, pc int, e error) {
 		ret = b[pc : pc+size]
 		pc += size
 	}
-
 	return
 }
-
 // GetSigOpCount -
 func GetSigOpCount(scr []byte, fAccurate bool) (n uint) {
 	var pc int
@@ -405,7 +362,6 @@ func GetSigOpCount(scr []byte, fAccurate bool) (n uint) {
 	}
 	return
 }
-
 // DecodeOpN -
 func DecodeOpN(opcode byte) int {
 	if opcode == 0x00 /*OP_0*/ {
@@ -413,7 +369,6 @@ func DecodeOpN(opcode byte) int {
 	}
 	return int(opcode) - 0x50 /*OP_1-1*/
 }
-
 // GetP2SHSigOpCount -
 func GetP2SHSigOpCount(scr []byte) uint {
 	// This is a pay-to-script-hash scriptPubKey;
@@ -432,10 +387,8 @@ func GetP2SHSigOpCount(scr []byte) uint {
 			return 0
 		}
 	}
-
 	return GetSigOpCount(data, true)
 }
-
 // IsWitnessProgram -
 func IsWitnessProgram(scr []byte) (version int, program []byte) {
 	if len(scr) < 4 || len(scr) > 42 {
@@ -450,14 +403,12 @@ func IsWitnessProgram(scr []byte) (version int, program []byte) {
 	}
 	return
 }
-
 // WitnessSigOps -
 func WitnessSigOps(witversion int, witprogram []byte, witness [][]byte) uint {
 	if witversion == 0 {
 		if len(witprogram) == 20 {
 			return 1
 		}
-
 		if len(witprogram) == 32 && len(witness) > 0 {
 			subscript := witness[len(witness)-1]
 			return GetSigOpCount(subscript, true)
@@ -465,7 +416,6 @@ func WitnessSigOps(witversion int, witprogram []byte, witness [][]byte) uint {
 	}
 	return 0
 }
-
 // IsPushOnly -
 func IsPushOnly(scr []byte) bool {
 	idx := 0

@@ -1,5 +1,4 @@
 package usif
-
 import (
 	"encoding/binary"
 	"encoding/hex"
@@ -8,7 +7,6 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
@@ -16,14 +14,12 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 	"github.com/ParallelCoinTeam/duod/lib/script"
 )
-
 // OneUIRequest -
 type OneUIRequest struct {
 	Param   string
 	Handler func(pars string)
 	Done    sync.WaitGroup
 }
-
 // OneLock - A thread that wants to lock the main thread calls:
 // In.Add(1); Out.Add(1); [put msg into LocksChan]; In.Wait(); [do synchronized code]; Out.Done()
 // The main thread, upon receiving the message, does:
@@ -32,7 +28,6 @@ type OneLock struct {
 	In  sync.WaitGroup // main thread calls Done() on this one and then Stop.Wait()
 	Out sync.WaitGroup // the synchronized thread calls Done
 }
-
 var (
 	// UIChannel -
 	UIChannel = make(chan *OneUIRequest, 1)
@@ -41,7 +36,6 @@ var (
 	// ExitNow -
 	ExitNow sys.SyncBool
 )
-
 // DecodeTxSops -
 func DecodeTxSops(tx *btc.Tx) (s string, missinginp bool, totinp, totout uint64, sigops uint, e error) {
 	s += fmt.Sprintln("Transaction details (for your information):")
@@ -50,7 +44,6 @@ func DecodeTxSops(tx *btc.Tx) (s string, missinginp bool, totinp, totout uint64,
 	for i := range tx.TxIn {
 		s += fmt.Sprintf(" %3d %s", i, tx.TxIn[i].Input.String())
 		var po *btc.TxOut
-
 		inpid := btc.NewUint256(tx.TxIn[i].Input.Hash[:])
 		if txinmem, ok := network.TransactionsToSend[inpid.BIdx()]; ok {
 			s += fmt.Sprint(" mempool")
@@ -72,25 +65,21 @@ func DecodeTxSops(tx *btc.Tx) (s string, missinginp bool, totinp, totout uint64,
 				e = errors.New("Invalid signature")
 			}
 			totinp += po.Value
-
 			ads := "???"
 			if ad := btc.NewAddrFromPkScript(po.PkScript, common.Testnet); ad != nil {
 				ads = ad.String()
 			}
 			s += fmt.Sprintf(" %15.8f BTC @ %s", float64(po.Value)/1e8, ads)
-
 			if btc.IsP2SH(po.PkScript) {
 				so := btc.WitnessScaleFactor * btc.GetP2SHSigOpCount(tx.TxIn[i].ScriptSig)
 				s += fmt.Sprintf("  + %d sigops", so)
 				sigops += so
 			}
-
 			swo := tx.CountWitnessSigOps(i, po.PkScript)
 			if swo > 0 {
 				s += fmt.Sprintf("  + %d segops", swo)
 				sigops += swo
 			}
-
 			s += "\n"
 		} else {
 			s += fmt.Sprintln(" - UNKNOWN INPUT")
@@ -114,25 +103,20 @@ func DecodeTxSops(tx *btc.Tx) (s string, missinginp bool, totinp, totout uint64,
 		s += fmt.Sprintf("All OK: %.8f BTC in -> %.8f BTC out, with %.8f BTC fee\n", float64(totinp)/1e8,
 			float64(totout)/1e8, float64(totinp-totout)/1e8)
 	}
-
 	s += fmt.Sprintln("ECDSA sig operations : ", sigops)
-
 	return
 }
-
 // DecodeTx -
 func DecodeTx(tx *btc.Tx) (s string, missinginp bool, totinp, totout uint64, e error) {
 	s, missinginp, totinp, totout, _, e = DecodeTxSops(tx)
 	return
 }
-
 // LoadRawTx -
 func LoadRawTx(buf []byte) (s string) {
 	txd, er := hex.DecodeString(string(buf))
 	if er != nil {
 		txd = buf
 	}
-
 	// At this place we should have raw transaction in txd
 	tx, le := btc.NewTx(txd)
 	if tx == nil || le != len(txd) {
@@ -140,11 +124,8 @@ func LoadRawTx(buf []byte) (s string) {
 		return
 	}
 	tx.SetHash(txd)
-
 	s, _, _, _, _ = DecodeTx(tx)
-
 	network.RemoveFromRejected(&tx.Hash) // in case we rejected it eariler, to try it again as trusted
-
 	if why := network.NeedThisTxExt(&tx.Hash, nil); why != 0 {
 		s += fmt.Sprintln("Transaction not needed or not wanted", why)
 		network.TxMutex.Lock()
@@ -154,7 +135,6 @@ func LoadRawTx(buf []byte) (s string) {
 		network.TxMutex.Unlock()
 		return
 	}
-
 	if !network.SubmitLocalTx(tx, txd) {
 		network.TxMutex.Lock()
 		rr := network.TransactionsRejected[tx.Hash.BIdx()]
@@ -166,7 +146,6 @@ func LoadRawTx(buf []byte) (s string) {
 		}
 		return
 	}
-
 	network.TxMutex.Lock()
 	_, ok := network.TransactionsToSend[tx.Hash.BIdx()]
 	network.TxMutex.Unlock()
@@ -175,19 +154,15 @@ func LoadRawTx(buf []byte) (s string) {
 	} else {
 		s += fmt.Sprintln("Transaction not rejected, but also not accepted - very strange!")
 	}
-
 	return
 }
-
 // SendInvToRandomPeer -
 func SendInvToRandomPeer(typ uint32, h *btc.Uint256) {
 	common.CountSafe(fmt.Sprint("NetSendOneInv", typ))
-
 	// Prepare the inv
 	inv := new([36]byte)
 	binary.LittleEndian.PutUint32(inv[0:4], typ)
 	copy(inv[4:36], h.Bytes())
-
 	// Append it to PendingInvs in a random connection
 	network.MutexNet.Lock()
 	idx := rand.Intn(len(network.OpenCons))
@@ -204,7 +179,6 @@ func SendInvToRandomPeer(typ uint32, h *btc.Uint256) {
 	network.MutexNet.Unlock()
 	return
 }
-
 // GetNetworkHashRateNum -
 func GetNetworkHashRateNum() float64 {
 	hours := common.CFG.Stat.HashrateHrs
@@ -228,7 +202,6 @@ func GetNetworkHashRateNum() float64 {
 	bph := float64(cnt) / float64(hours)
 	return bph / 6 * diff * 7158278.826667
 }
-
 // ExecUIRequest -
 func ExecUIRequest(req *OneUIRequest) {
 	L.Info("main.go last seen in line", common.BusyIn())
@@ -242,21 +215,17 @@ func ExecUIRequest(req *OneUIRequest) {
 		L.Info("> ")
 	}()
 }
-
 // MemoryPoolFees -
 func MemoryPoolFees() (res string) {
 	res = fmt.Sprintln("Content of mempool sorted by fee's SPB:")
 	network.TxMutex.Lock()
 	defer network.TxMutex.Unlock()
-
 	sorted := network.GetSortedMempoolNew()
-
 	var totlen, rawlen uint64
 	for cnt := 0; cnt < len(sorted); cnt++ {
 		v := sorted[cnt]
 		newlen := totlen + uint64(v.VSize())
 		rawlen += uint64(len(v.Raw))
-
 		if cnt == 0 || cnt+1 == len(sorted) || (newlen/100e3) != (totlen/100e3) {
 			spb := float64(v.Fee) / float64(v.VSize())
 			toprint := newlen
@@ -268,12 +237,10 @@ func MemoryPoolFees() (res string) {
 		if (newlen / 1e6) != (totlen / 1e6) {
 			res += "===========================================================\n"
 		}
-
 		totlen = newlen
 	}
 	return
 }
-
 func init() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 }

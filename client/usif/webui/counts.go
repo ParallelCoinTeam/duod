@@ -1,34 +1,26 @@
 package webui
-
 import (
 	//	"os"
 	"fmt"
 	"sort"
 	//	"strings"
 	"net/http"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 )
-
 type manyCounters []oneCounter
-
 type oneCounter struct {
 	key string
 	cnt uint64
 }
-
 func (c manyCounters) Len() int {
 	return len(c)
 }
-
 func (c manyCounters) Less(i, j int) bool {
 	return c[i].key < c[j].key
 }
-
 func (c manyCounters) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
-
 func pCounts(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
@@ -38,7 +30,6 @@ func pCounts(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(s))
 	writeHTMLTail(w)
 }
-
 func jsonCounts(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
@@ -67,10 +58,8 @@ func jsonCounts(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(gen)
 	sort.Sort(txs)
 	sort.Strings(net)
-
 	w.Header()["Content-Type"] = []string{"application/json"}
 	w.Write([]byte("{\n"))
-
 	w.Write([]byte(" \"gen\":["))
 	for i := range gen {
 		w.Write([]byte(fmt.Sprint("{\"var\":\"", gen[i].key, "\",\"cnt\":", gen[i].cnt, "}")))
@@ -79,7 +68,6 @@ func jsonCounts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Write([]byte("],\n \"txs\":["))
-
 	for i := range txs {
 		w.Write([]byte(fmt.Sprint("{\"var\":\"", txs[i].key, "\",\"cnt\":", txs[i].cnt, "}")))
 		if i < len(txs)-1 {
@@ -87,7 +75,6 @@ func jsonCounts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Write([]byte("],\n \"net\":["))
-
 	for i := range net {
 		fin := "_" + net[i]
 		w.Write([]byte("{\"var\":\"" + net[i] + "\","))

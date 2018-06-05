@@ -1,11 +1,8 @@
 package chain
-
 import (
 	"math/big"
-
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 )
-
 const (
 	// POWRetargetSpam -
 	POWRetargetSpam = 14 * 24 * 60 * 60 // two weeks
@@ -13,14 +10,12 @@ const (
 	TargetSpacing  = 10 * 60
 	targetInterval = POWRetargetSpam / TargetSpacing
 )
-
 // GetNextWorkRequired -
 func (ch *Chain) GetNextWorkRequired(lst *BlockTreeNode, ts uint32) (res uint32) {
 	// Genesis block
 	if lst.Parent == nil {
 		return ch.Consensus.MaxPOWBits
 	}
-
 	if ((lst.Height + 1) % targetInterval) != 0 {
 		// Special difficulty rule for testnet:
 		if ch.testnet() {
@@ -38,35 +33,27 @@ func (ch *Chain) GetNextWorkRequired(lst *BlockTreeNode, ts uint32) (res uint32)
 		}
 		return lst.Bits()
 	}
-
 	prv := lst
 	for i := 0; i < targetInterval-1; i++ {
 		prv = prv.Parent
 	}
-
 	actualTimespan := int64(lst.Timestamp() - prv.Timestamp())
-
 	if actualTimespan < POWRetargetSpam/4 {
 		actualTimespan = POWRetargetSpam / 4
 	}
 	if actualTimespan > POWRetargetSpam*4 {
 		actualTimespan = POWRetargetSpam * 4
 	}
-
 	// Retarget
 	bnewbn := btc.SetCompact(lst.Bits())
 	bnewbn.Mul(bnewbn, big.NewInt(actualTimespan))
 	bnewbn.Div(bnewbn, big.NewInt(POWRetargetSpam))
-
 	if bnewbn.Cmp(ch.Consensus.MaxPOWValue) > 0 {
 		bnewbn = ch.Consensus.MaxPOWValue
 	}
-
 	res = btc.GetCompact(bnewbn)
-
 	return
 }
-
 // MorePOW Returns true if b1 has more POW than b2
 func (b1 *BlockTreeNode) MorePOW(b2 *BlockTreeNode) bool {
 	var b1sum, b2sum float64

@@ -1,9 +1,7 @@
 package bech32
-
 import (
 	"bytes"
 )
-
 // Return nil on error
 func convertBits(outbits uint, in []byte, inbits uint, pad bool) []byte {
 	var val uint32
@@ -27,7 +25,6 @@ func convertBits(outbits uint, in []byte, inbits uint, pad bool) []byte {
 	}
 	return out.Bytes()
 }
-
 // SegwitEncode - Returns empty string on error
 func SegwitEncode(hrp string, witver int, witprog []byte) string {
 	if witver > 16 {
@@ -41,7 +38,6 @@ func SegwitEncode(hrp string, witver int, witprog []byte) string {
 	}
 	return Encode(hrp, append([]byte{byte(witver)}, convertBits(5, witprog, 8, true)...))
 }
-
 // SegwitDecode - returns (0, nil) on error
 func SegwitDecode(hrp, addr string) (witver int, witdata []byte) {
 	hrpActual, data := Decode(addr)

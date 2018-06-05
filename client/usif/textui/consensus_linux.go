@@ -1,35 +1,24 @@
 // +build linux
-
 // Place the bitcoin consensus lib (libbitcoinconsensus.so) where OS can find it.
 // If this file does not build and you don't know what to do, just delete it
-
 package textui
-
 /*
 #cgo LDFLAGS: -ldl
-
 #include <stdio.h>
 #include <dlfcn.h>
-
-
 typedef signed long long int64_t;
-
 unsigned int (*_bitcoinconsensus_version)();
-
 int (*_bitcoinconsensus_verify_script_with_amount)(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen, int64_t amount,
-                                    const unsigned char *txTo        , unsigned int txToLen,
-                                    unsigned int nIn, unsigned int flags, void* err);
-
+const unsigned char *txTo        , unsigned int txToLen,
+unsigned int nIn, unsigned int flags, void* err);
 int bitcoinConsensusVerifyScriptWithAmount(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen, int64_t amount,
-                                    const unsigned char *txTo        , unsigned int txToLen,
-                                    unsigned int nIn, unsigned int flags) {
+const unsigned char *txTo        , unsigned int txToLen,
+unsigned int nIn, unsigned int flags) {
 	return _bitcoinconsensus_verify_script_with_amount(scriptPubKey, scriptPubKeyLen, amount, txTo, txToLen, nIn, flags, NULL);
 }
-
 unsigned int bitcoinconsensus_version() {
 	return _bitcoinconsensus_version();
 }
-
 int init_bitcoinconsensus_so() {
 	void *so = dlopen("libbitcoinconsensus.so", RTLD_LAZY);
 	if (so) {
@@ -47,10 +36,8 @@ int init_bitcoinconsensus_so() {
 	}
 	return 0;
 }
-
 */
 import "C"
-
 import (
 	"encoding/hex"
 	"fmt"
@@ -58,20 +45,17 @@ import (
 	"sync/atomic"
 	"unsafe"
 	"strconv"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/script"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 var (
 	ConsensusChecks uint64
 	ConsensusExpErr uint64
 	ConsensusErrors uint64
 	mut             sync.Mutex
 )
-
 func check_consensus(pkScr []byte, amount uint64, i int, tx *btc.Tx, verFlags uint32, result bool) {
 	var tmp []byte
 	if len(pkScr) != 0 {
@@ -110,7 +94,6 @@ func check_consensus(pkScr []byte, amount uint64, i int, tx *btc.Tx, verFlags ui
 		}
 	}(tmp, tx_raw, amount, i, verFlags, result)
 }
-
 func verify_script_with_amount(pkScr []byte, amount uint64, i int, tx *btc.Tx, verFlags uint32) (result bool) {
 	txTo := tx.Raw
 	if txTo == nil {
@@ -124,17 +107,14 @@ func verify_script_with_amount(pkScr []byte, amount uint64, i int, tx *btc.Tx, v
 	}
 	r1 := int(C.bitcoinConsensusVerifyScriptWithAmount(pkscrPtr, pkscrLen, C.int64_t(amount),
 		(*C.uchar)(unsafe.Pointer(&txTo[0])), C.uint(len(txTo)), C.uint(i), C.uint(verFlags)))
-
 	result = (r1 == 1)
 	return
 }
-
 func consensus_stats(s string) {
 	fmt.Println("Consensus Checks:", atomic.LoadUint64(&ConsensusChecks))
 	fmt.Println("Consensus ExpErr:", atomic.LoadUint64(&ConsensusExpErr))
 	fmt.Println("Consensus Errors:", atomic.LoadUint64(&ConsensusErrors))
 }
-
 func init() {
 	if C.init_bitcoinconsensus_so() == 0 {
 		L.Debug("Not using libbitcoinconsensus.so to cross-check consensus rules")

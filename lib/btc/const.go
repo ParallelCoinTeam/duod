@@ -1,5 +1,4 @@
 package btc
-
 const (
 	// Coin - Precision of one token
 	Coin = 1e8

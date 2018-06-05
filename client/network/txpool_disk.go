@@ -1,6 +1,5 @@
 // Package network -
 package network
-
 import (
 	"bufio"
 	"bytes"
@@ -10,38 +9,30 @@ import (
 	"io"
 	"os"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 var (
 	// EndMarker -
 	EndMarker = []byte("END_OF_FILE")
 )
-
 const (
 	// MempoolFileName2 -
 	MempoolFileName2 = "mempool.dmp"
 )
-
 func bool2byte(v bool) (b byte) {
 	if v {
 		b = 1
 	}
 	return
-
 }
-
 // WriteBytes -
 func (t2s *OneTxToSend) WriteBytes(wr io.Writer) {
 	btc.WriteVlen(wr, uint64(len(t2s.Raw)))
 	wr.Write(t2s.Raw)
-
 	btc.WriteVlen(wr, uint64(len(t2s.Spent)))
 	binary.Write(wr, binary.LittleEndian, t2s.Spent[:])
-
 	binary.Write(wr, binary.LittleEndian, t2s.Invsentcnt)
 	binary.Write(wr, binary.LittleEndian, t2s.SentCnt)
 	binary.Write(wr, binary.LittleEndian, uint32(t2s.Firstseen.Unix()))
@@ -52,41 +43,33 @@ func (t2s *OneTxToSend) WriteBytes(wr io.Writer) {
 	binary.Write(wr, binary.LittleEndian, t2s.VerifyTime)
 	wr.Write([]byte{bool2byte(t2s.Local), t2s.Blocked, bool2byte(t2s.MemInputs != nil), bool2byte(t2s.Final)})
 }
-
 // MempoolSave -
 func MempoolSave(force bool) {
 	if !force && !common.CFG.TXPool.SaveOnDisk {
 		os.Remove(common.DuodHomeDir + MempoolFileName2)
 		return
 	}
-
 	f, er := os.Create(common.DuodHomeDir + MempoolFileName2)
 	if er != nil {
 		L.Debug(er.Error())
 		return
 	}
-
 	L.Debug("Saving ", MempoolFileName2)
 	wr := bufio.NewWriter(f)
-
 	wr.Write(common.Last.Block.BlockHash.Hash[:])
-
 	btc.WriteVlen(wr, uint64(len(TransactionsToSend)))
 	for _, t2s := range TransactionsToSend {
 		t2s.WriteBytes(wr)
 	}
-
 	btc.WriteVlen(wr, uint64(len(SpentOutputs)))
 	for k, v := range SpentOutputs {
 		binary.Write(wr, binary.LittleEndian, k)
 		binary.Write(wr, binary.LittleEndian, v)
 	}
-
 	wr.Write(EndMarker[:])
 	wr.Flush()
 	f.Close()
 }
-
 // MempoolLoad2 -
 func MempoolLoad2() bool {
 	var t2s *OneTxToSend
@@ -96,14 +79,12 @@ func MempoolLoad2() bool {
 	var tina uint32
 	var i int
 	var cnt1, cnt2 uint
-
 	f, er := os.Open(common.DuodHomeDir + MempoolFileName2)
 	if er != nil {
 		L.Debug("MempoolLoad:", er.Error())
 		return false
 	}
 	defer f.Close()
-
 	rd := bufio.NewReader(f)
 	if er = btc.ReadAll(rd, tmp[:32]); er != nil {
 		goto fatal_error
@@ -112,33 +93,27 @@ func MempoolLoad2() bool {
 		er = errors.New(MempoolFileName2 + " is for different last block hash (try to load it with 'mpl' command)")
 		goto fatal_error
 	}
-
 	if totcnt, er = btc.ReadVLen(rd); er != nil {
 		goto fatal_error
 	}
-
 	TransactionsToSend = make(map[BIDX]*OneTxToSend, int(totcnt))
 	for ; totcnt > 0; totcnt-- {
 		le, er = btc.ReadVLen(rd)
 		if er != nil {
 			goto fatal_error
 		}
-
 		t2s = new(OneTxToSend)
 		raw := make([]byte, int(le))
-
 		er = btc.ReadAll(rd, raw)
 		if er != nil {
 			goto fatal_error
 		}
-
 		t2s.Tx, i = btc.NewTx(raw)
 		if t2s.Tx == nil || i != len(raw) {
 			er = errors.New(fmt.Sprint("Error parsing tx from ", MempoolFileName2, " at idx", len(TransactionsToSend)))
 			goto fatal_error
 		}
 		t2s.Tx.SetHash(raw)
-
 		le, er = btc.ReadVLen(rd)
 		if er != nil {
 			goto fatal_error
@@ -147,41 +122,32 @@ func MempoolLoad2() bool {
 		if er = binary.Read(rd, binary.LittleEndian, t2s.Spent[:]); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.Invsentcnt); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.SentCnt); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &tina); er != nil {
 			goto fatal_error
 		}
 		t2s.Firstseen = time.Unix(int64(tina), 0)
-
 		if er = binary.Read(rd, binary.LittleEndian, &tina); er != nil {
 			goto fatal_error
 		}
 		t2s.Lastsent = time.Unix(int64(tina), 0)
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.Volume); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.Fee); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.SigopsCost); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &t2s.VerifyTime); er != nil {
 			goto fatal_error
 		}
-
 		if er = btc.ReadAll(rd, tmp[:4]); er != nil {
 			goto fatal_error
 		}
@@ -191,31 +157,24 @@ func MempoolLoad2() bool {
 			t2s.MemInputs = make([]bool, len(t2s.TxIn))
 		}
 		t2s.Final = tmp[3] != 0
-
 		t2s.Tx.Fee = t2s.Fee
-
 		TransactionsToSend[t2s.Hash.BIdx()] = t2s
 		TransactionsToSendSize += uint64(len(t2s.Raw))
 		TransactionsToSendWeight += uint64(t2s.Weight())
 	}
-
 	if totcnt, er = btc.ReadVLen(rd); er != nil {
 		goto fatal_error
 	}
-
 	SpentOutputs = make(map[uint64]BIDX, int(totcnt))
 	for ; totcnt > 0; totcnt-- {
 		if er = binary.Read(rd, binary.LittleEndian, &le); er != nil {
 			goto fatal_error
 		}
-
 		if er = binary.Read(rd, binary.LittleEndian, &bi); er != nil {
 			goto fatal_error
 		}
-
 		SpentOutputs[le] = bi
 	}
-
 	if er = btc.ReadAll(rd, tmp[:len(EndMarker)]); er != nil {
 		goto fatal_error
 	}
@@ -223,7 +182,6 @@ func MempoolLoad2() bool {
 		er = errors.New(MempoolFileName2 + " has marker missing")
 		goto fatal_error
 	}
-
 	// recover MemInputs
 	for _, t2s := range TransactionsToSend {
 		if t2s.MemInputs != nil {
@@ -241,12 +199,9 @@ func MempoolLoad2() bool {
 			}
 		}
 	}
-
 	L.Debug(len(TransactionsToSend), " transactions taking ", TransactionsToSendSize, " Bytes loaded from ", MempoolFileName2)
 	L.Debug(cnt1, " transactions use ", cnt2, " memory inputs")
-
 	return true
-
 fatal_error:
 	L.Error("Error loading", MempoolFileName2, ":", er.Error())
 	TransactionsToSend = make(map[BIDX]*OneTxToSend)
@@ -255,7 +210,6 @@ fatal_error:
 	SpentOutputs = make(map[uint64]BIDX)
 	return false
 }
-
 // MempoolLoadNew - this one is only called from TextUI
 func MempoolLoadNew(fname string, abort *bool) bool {
 	var ntx *TxRcvd
@@ -265,26 +219,21 @@ func MempoolLoadNew(fname string, abort *bool) bool {
 	var i int
 	var cnt1, cnt2 uint
 	var t2s OneTxToSend
-
 	f, er := os.Open(fname)
 	if er != nil {
 		L.Debug("MempoolLoad:", er.Error())
 		return false
 	}
 	defer f.Close()
-
 	rd := bufio.NewReader(f)
 	if er = btc.ReadAll(rd, tmp[:32]); er != nil {
 		goto fatal_error
 	}
-
 	if totcnt, er = btc.ReadVLen(rd); er != nil {
 		goto fatal_error
 	}
 	L.Debug("Loading", totcnt, "transactions from", fname)
-
 	oneperc = totcnt / 100
-
 	for idx = 0; idx < totcnt; idx++ {
 		if cntdwn == 0 {
 			L.Debug("\r", perc, "% complete...")
@@ -299,34 +248,28 @@ func MempoolLoadNew(fname string, abort *bool) bool {
 		if er != nil {
 			goto fatal_error
 		}
-
 		ntx = new(TxRcvd)
 		raw := make([]byte, int(le))
-
 		er = btc.ReadAll(rd, raw)
 		if er != nil {
 			goto fatal_error
 		}
-
 		ntx.Tx, i = btc.NewTx(raw)
 		if ntx.Tx == nil || i != len(raw) {
 			er = errors.New(fmt.Sprint("Error parsing tx from ", fname, " at idx", idx))
 			goto fatal_error
 		}
 		ntx.SetHash(raw)
-
 		le, er = btc.ReadVLen(rd)
 		if er != nil {
 			goto fatal_error
 		}
-
 		for le > 0 {
 			if er = binary.Read(rd, binary.LittleEndian, &tmp64); er != nil {
 				goto fatal_error
 			}
 			le--
 		}
-
 		// discard all the rest...
 		binary.Read(rd, binary.LittleEndian, &t2s.Invsentcnt)
 		binary.Read(rd, binary.LittleEndian, &t2s.SentCnt)
@@ -339,7 +282,6 @@ func MempoolLoadNew(fname string, abort *bool) bool {
 		if er = btc.ReadAll(rd, tmp[:4]); er != nil {
 			goto fatal_error
 		}
-
 		// submit tx if we dont have it yet...
 		if NeedThisTx(&ntx.Hash, nil) {
 			cnt2++
@@ -348,11 +290,8 @@ func MempoolLoadNew(fname string, abort *bool) bool {
 			}
 		}
 	}
-
 	L.Info(cnt1, "out of", cnt2, "new transactions accepted into memory pool")
-
 	return true
-
 fatal_error:
 	L.Error("Error loading", fname, ":", er.Error())
 	return false

@@ -1,11 +1,9 @@
 package btc
-
 import (
 	"bytes"
 	"testing"
 	"encoding/hex"
 )
-
 var ta = [][3]string{
 	{ // [0]-pubScr, [1]-sigScript, [2]-unsignedTx
 		"040eaebcd1df2df853d66ce0e1b0fda07f67d1cabefde98514aad795b86a6ea66dbeb26b67d7a00e2447baeccc8a4cef7cd3cad67376ac1c5785aeebb4f6441c16",
@@ -23,20 +21,17 @@ var ta = [][3]string{
 		"0100000001402a2443bb5f1d8582ac06e1cc4232a75ba98c3db339ab4e036b8a0ed7e9e602010000001976a9143ad4ff2b7712c0c41a46324031bc7e55e4341f1a88acffffffff0100e1f505000000001976a91440e6fd9a591bb2e6ce886b317959fb3ffa906f6988ac00000000",
 	},
 }
-
 func TestVerify(t *testing.T) {
 	for i := range ta {
 		key, e := hex.DecodeString(ta[i][0])
 		if e != nil {
 			t.Error(e.Error())
 		}
-
 		// signature script
 		sig, e := hex.DecodeString(ta[i][1])
 		if e != nil {
 			t.Error(e.Error())
 		}
-
 		// verify signature.Bytes()
 		_s, e := NewSignature(sig)
 		if e != nil {
@@ -48,30 +43,24 @@ func TestVerify(t *testing.T) {
 				t.Error("Signature.Bytes() not equal")
 			}
 		}
-
 		// hash of the message
 		b, e := hex.DecodeString(ta[i][2] + "01000000")
 		if e != nil {
 			t.Error(e.Error())
 		}
 		h := NewSha2Hash(b[:])
-
 		ok := EcdsaVerify(key, sig, h.Hash[:])
 		if !ok {
 			t.Error("Test vector failed", i)
 		}
 	}
 }
-
-
 func BenchmarkNewSignature(b *testing.B) {
 	ptr, _ := hex.DecodeString(ta[0][1])
 	for i := 0; i < b.N; i++ {
 		NewSignature(ptr[:])
 	}
 }
-
-
 func BenchmarkEcdsaSign(b *testing.B) {
 	var sec, msg [32]byte
 	ShaHash([]byte("sec"), sec[:])
@@ -81,8 +70,6 @@ func BenchmarkEcdsaSign(b *testing.B) {
 		EcdsaSign(sec[:], msg[:])
 	}
 }
-
-
 func BenchmarkEcdsaVerify(b *testing.B) {
 	key, _ := hex.DecodeString(ta[0][0])
 	sig, _ := hex.DecodeString(ta[0][1])

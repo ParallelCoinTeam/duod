@@ -1,9 +1,7 @@
 package btc
-
 import (
 	"testing"
 )
-
 func TestParseAmount(t *testing.T) {
 	var tv = []struct {
 		af string

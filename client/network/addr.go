@@ -1,13 +1,11 @@
 // Package network -
 package network
-
 import (
 	"bytes"
 	"encoding/binary"
 	"sort"
 	"sync"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
@@ -15,7 +13,6 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/others/qdb"
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 )
-
 var (
 	// ExternalIP4 - [0]-count, [1]-timestamp
 	ExternalIP4 = make(map[uint32][2]uint)
@@ -24,7 +21,6 @@ var (
 	// ExternalIPexpireTicker -
 	ExternalIPexpireTicker int
 )
-
 // ExternalAddrLen -
 func ExternalAddrLen() (res int) {
 	ExternalIPmutex.Lock()
@@ -32,14 +28,12 @@ func ExternalAddrLen() (res int) {
 	ExternalIPmutex.Unlock()
 	return
 }
-
 // ExternalIPrec -
 type ExternalIPrec struct {
 	IP  uint32
 	Cnt uint
 	Tim uint
 }
-
 // GetExternalIPs - Returns the list sorted by "freshness"
 func GetExternalIPs() (arr []ExternalIPrec) {
 	L.Debug("Getting external IPs")
@@ -63,17 +57,14 @@ func GetExternalIPs() (arr []ExternalIPrec) {
 	}
 	return
 }
-
 // BestExternalAddr -
 func BestExternalAddr() []byte {
 	L.Debug("Getting best external address")
 	arr := GetExternalIPs()
-
 	// Expire any extra IP if it has been stale for more than an hour
 	if len(arr) > 1 {
 		L.Debug("Expiring stale IPs")
 		worst := &arr[len(arr)-1]
-
 		if uint(time.Now().Unix())-worst.Tim > 3600 {
 			common.CountSafe("ExternalIPExpire")
 			ExternalIPmutex.Lock()
@@ -83,7 +74,6 @@ func BestExternalAddr() []byte {
 			ExternalIPmutex.Unlock()
 		}
 	}
-
 	res := make([]byte, 26)
 	binary.LittleEndian.PutUint64(res[0:8], common.Services)
 	// leave ip6 filled with zeros, except for the last 2 bytes:
@@ -94,7 +84,6 @@ func BestExternalAddr() []byte {
 	binary.BigEndian.PutUint16(res[24:26], common.DefaultTCPport())
 	return res
 }
-
 // SendAddr -
 func (c *OneConnection) SendAddr() {
 	L.Debug("Send addresses")
@@ -114,7 +103,6 @@ func (c *OneConnection) SendAddr() {
 		c.SendRawMsg("addr", buf.Bytes())
 	}
 }
-
 // SendOwnAddr -
 func (c *OneConnection) SendOwnAddr() {
 	L.Debug("Sending own address")
@@ -126,7 +114,6 @@ func (c *OneConnection) SendOwnAddr() {
 		c.SendRawMsg("addr", buf.Bytes())
 	}
 }
-
 // ParseAddr - Parse network's "addr" message
 func (c *OneConnection) ParseAddr(pl []byte) {
 	L.Debug("Parsing address")

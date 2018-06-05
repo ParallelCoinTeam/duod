@@ -1,5 +1,4 @@
 package btc
-
 const (
 	OP_0         = 0x00
 	OP_FALSE     = OP_0
@@ -25,7 +24,6 @@ const (
 	OP_14        = 0x5e
 	OP_15        = 0x5f
 	OP_16        = 0x60
-
 	OP_EQUAL         = 0x87
 	OP_HASH160       = 0xa9
 	OP_CHECKMULTISIG = 0xae

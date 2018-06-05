@@ -1,5 +1,4 @@
 package webui
-
 import (
 	"fmt"
 	"sort"
@@ -9,11 +8,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"net/http"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 )
-
 type omv struct {
 	unknownMiner bool
 	cnt          int
@@ -22,48 +19,38 @@ type omv struct {
 	//ebad_cnt int
 	//nya_cnt int
 }
-
 type onemiernstat []struct {
 	name string
 	omv
 }
-
 func (x onemiernstat) Len() int {
 	return len(x)
 }
-
 func (x onemiernstat) Less(i, j int) bool {
 	if x[i].cnt == x[j].cnt {
 		return x[i].name < x[j].name // Same numbers: sort by name
 	}
 	return x[i].cnt > x[j].cnt
 }
-
 func (x onemiernstat) Swap(i, j int) {
 	x[i], x[j] = x[j], x[i]
 }
-
 func pMiners(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	writeHTMLHead(w, r)
 	w.Write([]byte(loadTemplate("miners.html")))
 	writeHTMLTail(w)
 }
-
 func jsonBlkVer(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	w.Header()["Content-Type"] = []string{"application/json"}
-
 	common.Last.Mutex.Lock()
 	end := common.Last.Block
 	common.Last.Mutex.Unlock()
-
 	w.Write([]byte("["))
 	if end != nil {
 		MaxCount := 2 * 2016 //common.BlockChain.Consensus.Window
@@ -79,12 +66,10 @@ func jsonBlkVer(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte("]"))
 }
-
 func jsonMiners(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	type oneMinerRow struct {
 		Unknown               bool
 		Name                  string
@@ -92,7 +77,6 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		TotalFees, TotalBytes uint64
 		//BUcnt, NYAcnt int
 	}
-
 	type theMiningStats struct {
 		MiningStatHours  uint
 		BlockCount       uint
@@ -103,9 +87,7 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		NextDiffChange   uint32
 		Miners           []oneMinerRow
 	}
-
 	common.ReloadMiners()
-
 	m := make(map[string]omv, 20)
 	var om omv
 	cnt := uint(0)
@@ -115,11 +97,8 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 	var lastts int64
 	var diff float64
 	now := time.Now().Unix()
-
 	nextDiffChange := 2016 - end.Height%2016
-
 	//ebAdX := regexp.MustCompile("/EB[0-9]+/AD[0-9]+/")
-
 	for ; end != nil; cnt++ {
 		if now-int64(end.Timestamp()) > int64(common.CFG.Stat.MiningHrs)*3600 {
 			break
@@ -129,21 +108,17 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		if e != nil {
 			break
 		}
-
 		block, e := btc.NewBlock(bl)
 		if e != nil {
 			break
 		}
-
 		cbasetx, _ := btc.NewTx(bl[block.TxOffset:])
-
 		diff += btc.GetDifficulty(end.Bits())
 		miner, mid := common.TxMiner(cbasetx)
 		om = m[miner]
 		om.cnt++
 		om.bts += uint64(len(bl))
 		om.unknownMiner = (mid == -1)
-
 		// Blocks reward
 		var rew uint64
 		for o := range cbasetx.TxOut {
@@ -153,25 +128,19 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		if int64(fees) > 0 { // solution for a possibility of a miner not claiming the reward (see block #501726)
 			om.fees += fees
 		}
-
 		/*if ebAdX.Find(cbasetx.TxIn[0].ScriptSig) != nil {
 			om.ebad_cnt++
 		}
-
 		if bytes.Index(cbasetx.TxIn[0].ScriptSig, []byte("/NYA/")) != -1 {
 			om.nya_cnt++
 		}*/
-
 		m[miner] = om
-
 		end = end.Parent
 	}
-
 	if cnt == 0 {
 		w.Write([]byte("{}"))
 		return
 	}
-
 	srt := make(onemiernstat, len(m))
 	i := 0
 	for k, v := range m {
@@ -180,13 +149,10 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		i++
 	}
 	sort.Sort(srt)
-
 	var stats theMiningStats
-
 	diff /= float64(cnt)
 	bph := float64(cnt) / float64(common.CFG.Stat.MiningHrs)
 	hrate := bph / 6 * diff * 7158278.826667
-
 	stats.MiningStatHours = common.CFG.Stat.MiningHrs
 	stats.BlockCount = cnt
 	stats.FirstBlockTime = lastts
@@ -194,7 +160,6 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 	stats.AvgDifficulty = diff
 	stats.AvgHashrate = hrate
 	stats.NextDiffChange = nextDiffChange
-
 	stats.Miners = make([]oneMinerRow, len(srt))
 	for i := range srt {
 		stats.Miners[i].Unknown = srt[i].unknownMiner
@@ -205,7 +170,6 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 		//stats.Miners[i].BUcnt = srt[i].ebad_cnt
 		//stats.Miners[i].NYAcnt = srt[i].nya_cnt
 	}
-
 	bx, er := json.Marshal(stats)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -213,5 +177,4 @@ func jsonMiners(w http.ResponseWriter, r *http.Request) {
 	} else {
 		println(er.Error())
 	}
-
 }

@@ -1,5 +1,4 @@
 package webui
-
 import (
 	"encoding/hex"
 	"encoding/json"
@@ -11,23 +10,19 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
 	"github.com/ParallelCoinTeam/duod/client/usif"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/script"
 )
-
 func pTxs(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	var txloadresult string
 	var wg sync.WaitGroup
 	var tx2in []byte
-
 	// Check if there is a tx upload request
 	r.ParseMultipartForm(2e6)
 	fil, _, _ := r.FormFile("txfile")
@@ -36,7 +31,6 @@ func pTxs(w http.ResponseWriter, r *http.Request) {
 	} else if len(r.Form["rawtx"]) == 1 {
 		tx2in, _ = hex.DecodeString(r.Form["rawtx"][0])
 	}
-
 	if len(tx2in) > 0 {
 		wg.Add(1)
 		req := &usif.OneUIRequest{Param: string(tx2in)}
@@ -47,33 +41,27 @@ func pTxs(w http.ResponseWriter, r *http.Request) {
 		}
 		usif.UIChannel <- req
 	}
-
 	s := loadTemplate("txs.html")
-
 	wg.Wait()
 	if txloadresult != "" {
 		ld := loadTemplate("txs_load.html")
 		ld = strings.Replace(ld, "{TX_RAW_DATA}", txloadresult, 1)
 		s = strings.Replace(s, "<!--TX_LOAD-->", ld, 1)
 	}
-
 	if common.CFG.TXPool.Enabled {
 		s = strings.Replace(s, "<!--MEM_POOL_ENABLED-->", "Enabled", 1)
 	} else {
 		s = strings.Replace(s, "<!--MEM_POOL_ENABLED-->", "Disabled", 1)
 	}
-
 	if common.CFG.TXRoute.Enabled {
 		s = strings.Replace(s, "<!--TX_ROUTE_ENABLED-->", "Enabled", 1)
 	} else {
 		s = strings.Replace(s, "<!--TX_ROUTE_ENABLED-->", "Disabled", 1)
 	}
-
 	writeHTMLHead(w, r)
 	w.Write([]byte(s))
 	writeHTMLTail(w)
 }
-
 // outputTxXML -
 func outputTxXML(w http.ResponseWriter, tx *btc.Tx) {
 	w.Write([]byte("<input_list>"))
@@ -105,7 +93,6 @@ func outputTxXML(w http.ResponseWriter, tx *btc.Tx) {
 				fmt.Fprint(w, "<addr>", ad.String(), "</addr>")
 			}
 			fmt.Fprint(w, "<block>", po.BlockHeight, "</block>")
-
 			if btc.IsP2SH(po.PkScript) {
 				fmt.Fprint(w, "<input_sigops>", btc.WitnessScaleFactor*btc.GetP2SHSigOpCount(tx.TxIn[i].ScriptSig), "</input_sigops>")
 			}
@@ -114,7 +101,6 @@ func outputTxXML(w http.ResponseWriter, tx *btc.Tx) {
 			w.Write([]byte("<status>Unknown input</status>"))
 		}
 		fmt.Fprint(w, "<sequence>", tx.TxIn[i].Sequence, "</sequence>")
-
 		if tx.SegWit != nil {
 			w.Write([]byte("<segwit>"))
 			for _, wit := range tx.SegWit[i] {
@@ -127,7 +113,6 @@ func outputTxXML(w http.ResponseWriter, tx *btc.Tx) {
 		w.Write([]byte("</input>"))
 	}
 	w.Write([]byte("</input_list>"))
-
 	w.Write([]byte("<output_list>"))
 	for i := range tx.TxOut {
 		w.Write([]byte("<output>"))
@@ -142,7 +127,6 @@ func outputTxXML(w http.ResponseWriter, tx *btc.Tx) {
 	}
 	w.Write([]byte("</output_list>"))
 }
-
 func txXML(w http.ResponseWriter, v *network.OneTxToSend, verbose bool) {
 	w.Write([]byte("<tx><status>OK</status>"))
 	fmt.Fprint(w, "<id>", v.Tx.Hash.String(), "</id>")
@@ -151,7 +135,6 @@ func txXML(w http.ResponseWriter, v *network.OneTxToSend, verbose bool) {
 	if int(v.Size) != len(v.Raw) {
 		panic("TX size does not match data length")
 	}
-
 	fmt.Fprint(w, "<size>", v.Size, "</size>")
 	fmt.Fprint(w, "<nwsize>", v.NoWitSize, "</nwsize>")
 	fmt.Fprint(w, "<weight>", v.Weight(), "</weight>")
@@ -176,24 +159,20 @@ func txXML(w http.ResponseWriter, v *network.OneTxToSend, verbose bool) {
 	fmt.Fprint(w, "<verify_us>", uint(v.VerifyTime/time.Microsecond), "</verify_us>")
 	w.Write([]byte("</tx>"))
 }
-
 func outputUXTOTxXML(w http.ResponseWriter, minedid, minedat string) {
 	txid := btc.NewUint256FromString(minedid)
 	if txid == nil {
 		return
 	}
-
 	blockNumber, er := strconv.ParseUint(minedat, 10, 32)
 	if er != nil {
 		return
 	}
-
 	lck := new(usif.OneLock)
 	lck.In.Add(1)
 	lck.Out.Add(1)
 	usif.LocksChan <- lck
 	lck.In.Wait()
-
 	w.Write([]byte("<tx>"))
 	fmt.Fprint(w, "<id>", minedid, "</id>")
 	if dat, er := common.GetRawTx(uint32(blockNumber), txid); er == nil {
@@ -205,14 +184,10 @@ func outputUXTOTxXML(w http.ResponseWriter, minedid, minedat string) {
 		w.Write([]byte("<status>Not found</status>"))
 	}
 	w.Write([]byte("</tx>"))
-
 	lck.Out.Done()
-
 }
-
 /* memory pool transaction sorting stuff */
 type sortedTxList []*network.OneTxToSend
-
 func (tl sortedTxList) Len() int      { return len(tl) }
 func (tl sortedTxList) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
 func (tl sortedTxList) Less(i, j int) bool {
@@ -254,23 +229,18 @@ func (tl sortedTxList) Less(i, j int) bool {
 	}
 	return !res
 }
-
 var tx2sCount = 1000
 var tx2sSort = "spb"
 var tx2sSortDesc = true
-
 func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	w.Header()["Content-Type"] = []string{"text/xml"}
-
 	if len(r.Form["minedid"]) > 0 && len(r.Form["minedat"]) > 0 {
 		outputUXTOTxXML(w, r.Form["minedid"][0], r.Form["minedat"][0])
 		return
 	}
-
 	if len(r.Form["id"]) > 0 {
 		txid := btc.NewUint256FromString(r.Form["id"][0])
 		if txid == nil {
@@ -288,7 +258,6 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	if checksid(r) {
 		if len(r.Form["del"]) > 0 {
 			tid := btc.NewUint256FromString(r.Form["del"][0])
@@ -300,7 +269,6 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 				network.TxMutex.Unlock()
 			}
 		}
-
 		if len(r.Form["send"]) > 0 {
 			tid := btc.NewUint256FromString(r.Form["send"][0])
 			if tid != nil {
@@ -318,7 +286,6 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
 		if len(r.Form["sendone"]) > 0 {
 			tid := btc.NewUint256FromString(r.Form["sendone"][0])
 			if tid != nil {
@@ -332,28 +299,22 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-
 		if len(r.Form["quiet"]) > 0 {
 			return
 		}
-
 		if len(r.Form["cnt"]) > 0 {
 			u, e := strconv.ParseUint(r.Form["cnt"][0], 10, 32)
 			if e == nil && u > 0 && u < 10e3 {
 				tx2sCount = int(u)
 			}
 		}
-
 		if len(r.Form["sort"]) > 0 && len(r.Form["sort"][0]) == 3 {
 			tx2sSort = r.Form["sort"][0]
 		}
-
 		tx2sSortDesc = len(r.Form["descending"]) > 0
 	}
-
 	network.TxMutex.Lock()
 	defer network.TxMutex.Unlock()
-
 	sorted := make(sortedTxList, len(network.TransactionsToSend))
 	var cnt int
 	for _, v := range network.TransactionsToSend {
@@ -365,7 +326,6 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 	}
 	sorted = sorted[:cnt]
 	sort.Sort(sorted)
-
 	w.Write([]byte("<txpool>"))
 	for cnt = 0; cnt < len(sorted) && cnt < tx2sCount; cnt++ {
 		v := sorted[cnt]
@@ -373,12 +333,10 @@ func xmlTxs2s(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write([]byte("</txpool>"))
 }
-
 func xmlTxSre(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	w.Header()["Content-Type"] = []string{"text/xml"}
 	w.Write([]byte("<txbanned>"))
 	network.TxMutex.Lock()
@@ -393,12 +351,10 @@ func xmlTxSre(w http.ResponseWriter, r *http.Request) {
 	network.TxMutex.Unlock()
 	w.Write([]byte("</txbanned>"))
 }
-
 func xmlTxW4i(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	w.Header()["Content-Type"] = []string{"text/xml"}
 	w.Write([]byte("<pending>"))
 	network.TxMutex.Lock()
@@ -421,12 +377,10 @@ func xmlTxW4i(w http.ResponseWriter, r *http.Request) {
 	network.TxMutex.Unlock()
 	w.Write([]byte("</pending>"))
 }
-
 func rawTx(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
-
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Fprintln(w, "Error")
@@ -435,12 +389,10 @@ func rawTx(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-
 	if len(r.Form["id"]) == 0 {
 		fmt.Println("No id given")
 		return
 	}
-
 	txid := btc.NewUint256FromString(r.Form["id"][0])
 	fmt.Fprintln(w, "TxID:", txid.String())
 	if tx, ok := network.TransactionsToSend[txid.BIdx()]; ok {
@@ -450,16 +402,13 @@ func rawTx(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Not found")
 	}
 }
-
 func jsonTxStat(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
 	}
 	w.Header()["Content-Type"] = []string{"application/json"}
 	w.Write([]byte("{"))
-
 	network.TxMutex.Lock()
-
 	w.Write([]byte(fmt.Sprint("\"t2s_cnt\":", len(network.TransactionsToSend), ",")))
 	w.Write([]byte(fmt.Sprint("\"t2s_size\":", network.TransactionsToSendSize, ",")))
 	w.Write([]byte(fmt.Sprint("\"tre_cnt\":", len(network.TransactionsRejected), ",")))
@@ -470,12 +419,9 @@ func jsonTxStat(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprint("\"awaiting_inputs\":", len(network.WaitingForInputs), ",")))
 	w.Write([]byte(fmt.Sprint("\"awaiting_inputs_size\":", network.WaitingForInputsSize, ",")))
 	w.Write([]byte(fmt.Sprint("\"min_fee_per_kb\":", common.MinFeePerKB(), "")))
-
 	network.TxMutex.Unlock()
-
 	w.Write([]byte("}\n"))
 }
-
 func txtMempoolFees(w http.ResponseWriter, r *http.Request) {
 	if !ipchecker(r) {
 		return
@@ -483,18 +429,14 @@ func txtMempoolFees(w http.ResponseWriter, r *http.Request) {
 	w.Header()["Content-Type"] = []string{"text/plain"}
 	w.Write([]byte(usif.MemoryPoolFees()))
 }
-
 func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 	var division, maxweight uint64
 	var e error
-
 	if !ipchecker(r) {
 		return
 	}
-
 	network.TxMutex.Lock()
 	defer network.TxMutex.Unlock()
-
 	if len(r.Form["max"]) > 0 {
 		maxweight, e = strconv.ParseUint(r.Form["max"][0], 10, 64)
 		if e != nil {
@@ -503,11 +445,9 @@ func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 	} else {
 		maxweight = network.TransactionsToSendWeight
 	}
-
 	if maxweight > network.TransactionsToSendWeight {
 		maxweight = network.TransactionsToSendWeight
 	}
-
 	if len(r.Form["div"]) > 0 {
 		division, e = strconv.ParseUint(r.Form["div"][0], 10, 64)
 		if e != nil {
@@ -516,18 +456,15 @@ func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 	} else {
 		division = maxweight / 100
 	}
-
 	if division < 100 {
 		division = 100
 	}
-
 	var sorted []*network.OneTxToSend
 	if len(r.Form["new"]) > 0 {
 		sorted = network.GetSortedMempoolNew()
 	} else {
 		sorted = network.GetSortedMempool()
 	}
-
 	type oneStatRow struct {
 		TxsSoFar        uint
 		RealLenSoFar    uint
@@ -539,14 +476,12 @@ func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 		FeesSoFar       uint64
 	}
 	var mempoolStats []oneStatRow
-
 	var totweight, reallen, totfee uint64
 	for cnt := 0; cnt < len(sorted); cnt++ {
 		v := sorted[cnt]
 		newtotweight := totweight + uint64(v.Weight())
 		reallen += uint64(len(v.Raw))
 		totfee += v.Fee
-
 		if cnt == 0 || cnt+1 == len(sorted) || (newtotweight/division) != (totweight/division) {
 			currSpb := float64(v.Fee) / (float64(v.Weight() / 4.0))
 			mempoolStats = append(mempoolStats, oneStatRow{
@@ -564,7 +499,6 @@ func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-
 	bx, er := json.Marshal(mempoolStats)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}
@@ -573,18 +507,14 @@ func jsonMempoolStats(w http.ResponseWriter, r *http.Request) {
 		println(er.Error())
 	}
 }
-
 func jsonMempoolFees(w http.ResponseWriter, r *http.Request) {
 	var division, maxweight uint64
 	var e error
-
 	if !ipchecker(r) {
 		return
 	}
-
 	network.TxMutex.Lock()
 	defer network.TxMutex.Unlock()
-
 	if len(r.Form["max"]) > 0 {
 		maxweight, e = strconv.ParseUint(r.Form["max"][0], 10, 64)
 		if e != nil {
@@ -593,11 +523,9 @@ func jsonMempoolFees(w http.ResponseWriter, r *http.Request) {
 	} else {
 		maxweight = network.TransactionsToSendWeight
 	}
-
 	if maxweight > network.TransactionsToSendWeight {
 		maxweight = network.TransactionsToSendWeight
 	}
-
 	if len(r.Form["div"]) > 0 {
 		division, e = strconv.ParseUint(r.Form["div"][0], 10, 64)
 		if e != nil {
@@ -606,13 +534,10 @@ func jsonMempoolFees(w http.ResponseWriter, r *http.Request) {
 	} else {
 		division = maxweight / 100
 	}
-
 	if division < 1 {
 		division = 1
 	}
-
 	sorted := network.GetMempoolFees(maxweight)
-
 	var mempoolStats [][3]uint64
 	var totweight uint64
 	var totfeessofar uint64
@@ -621,13 +546,11 @@ func jsonMempoolFees(w http.ResponseWriter, r *http.Request) {
 		fee := sorted[cnt][1]
 		totfeessofar += fee
 		newtotweight := totweight + wgh
-
 		if cnt == 0 || cnt+1 == len(sorted) || (newtotweight/division) != (totweight/division) {
 			mempoolStats = append(mempoolStats, [3]uint64{newtotweight, 4000 * fee / wgh, totfeessofar})
 		}
 		totweight = newtotweight
 	}
-
 	bx, er := json.Marshal(mempoolStats)
 	if er == nil {
 		w.Header()["Content-Type"] = []string{"application/json"}

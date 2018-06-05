@@ -1,26 +1,21 @@
 package btc
-
 import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"math/big"
 	"sync/atomic"
-
 	"github.com/ParallelCoinTeam/duod/lib/secp256k1"
 )
-
 var (
 	ecdsaVerifyCnt uint64
 	// ECVerify -
 	ECVerify func(k, s, h []byte) bool
 )
-
 // EcdsaVerifyCnt -
 func EcdsaVerifyCnt() uint64 {
 	return atomic.LoadUint64(&ecdsaVerifyCnt)
 }
-
 // EcdsaVerify -
 func EcdsaVerify(kd []byte, sd []byte, hash []byte) bool {
 	atomic.AddUint64(&ecdsaVerifyCnt, 1)
@@ -32,15 +27,12 @@ func EcdsaVerify(kd []byte, sd []byte, hash []byte) bool {
 	}
 	return secp256k1.Verify(kd, sd, hash)
 }
-
 // EcdsaSign -
 func EcdsaSign(priv, hash []byte) (r, s *big.Int, err error) {
 	var sig secp256k1.Signature
 	var sec, msg, nonce secp256k1.Number
-
 	sec.SetBytes(priv)
 	msg.SetBytes(hash)
-
 	sha := sha256.New()
 	sha.Write(priv)
 	sha.Write(hash)
@@ -53,7 +45,6 @@ func EcdsaSign(priv, hash []byte) (r, s *big.Int, err error) {
 			break
 		}
 	}
-
 	if sig.Sign(&sec, &msg, &nonce, nil) != 1 {
 		err = errors.New("ESCDS Sign error()")
 	}

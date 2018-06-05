@@ -1,9 +1,7 @@
 package bech32
-
 import (
 	"bytes"
 )
-
 func bech32PolymodStep(pre uint32) uint32 {
 	b := uint32(pre >> 25)
 	return ((pre & 0x1FFFFFF) << 5) ^
@@ -13,11 +11,9 @@ func bech32PolymodStep(pre uint32) uint32 {
 		(-((b >> 3) & 1) & 0x3d4233dd) ^
 		(-((b >> 4) & 1) & 0x2a1462b3)
 }
-
 const (
 	charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 )
-
 var (
 	charsetRev = [128]byte{
 		99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
@@ -29,7 +25,6 @@ var (
 		99, 29, 99, 24, 13, 25, 9, 8, 23, 99, 18, 22, 31, 27, 19, 99,
 		1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, 99, 99, 99, 99, 99}
 )
-
 // Encode - returns empty string on error
 func Encode(hrp string, data []byte) string {
 	var chk uint32 = 1
@@ -40,7 +35,6 @@ func Encode(hrp string, data []byte) string {
 		if ch < 33 || ch > 126 {
 			return ""
 		}
-
 		if ch >= 'A' && ch <= 'Z' {
 			return ""
 		}
@@ -57,7 +51,6 @@ func Encode(hrp string, data []byte) string {
 		output.WriteByte(tmp)
 	}
 	output.WriteByte('1')
-
 	for i = range data {
 		if (data[i] >> 5) != 0 {
 			return ""
@@ -74,7 +67,6 @@ func Encode(hrp string, data []byte) string {
 	}
 	return string(output.Bytes())
 }
-
 // Decode -returns ("", nil) on error
 func Decode(input string) (resHrp string, resData []byte) {
 	var chk uint32 = 1

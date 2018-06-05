@@ -1,23 +1,18 @@
 package btc
-
 import (
 	"encoding/hex"
 	"errors"
-
 	"github.com/ParallelCoinTeam/duod/lib/secp256k1"
 )
-
 // PublicKey -
 type PublicKey struct {
 	secp256k1.XY
 }
-
 // Signature -
 type Signature struct {
 	secp256k1.Signature
 	HashType byte
 }
-
 // NewPublicKey -
 func NewPublicKey(buf []byte) (res *PublicKey, e error) {
 	res = new(PublicKey)
@@ -27,7 +22,6 @@ func NewPublicKey(buf []byte) (res *PublicKey, e error) {
 	}
 	return
 }
-
 // NewSignature -
 func NewSignature(buf []byte) (*Signature, error) {
 	sig := new(Signature)
@@ -40,7 +34,6 @@ func NewSignature(buf []byte) (*Signature, error) {
 	}
 	return sig, nil
 }
-
 // RecoverPublicKey - Recoved public key form a signature
 func (sig *Signature) RecoverPublicKey(msg []byte, recid int) (key *PublicKey) {
 	key = new(PublicKey)
@@ -49,12 +42,10 @@ func (sig *Signature) RecoverPublicKey(msg []byte, recid int) (key *PublicKey) {
 	}
 	return
 }
-
 // IsLowS -
 func (sig *Signature) IsLowS() bool {
 	return sig.S.Cmp(&secp256k1.TheCurve.HalfOrder.Int) < 1
 }
-
 // Bytes - Returns serialized canoncal signature followed by a hash type
 func (sig *Signature) Bytes() []byte {
 	return append(sig.Signature.Bytes(), sig.HashType)

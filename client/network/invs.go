@@ -1,18 +1,15 @@
 //Package network -
 package network
-
 import (
 	"fmt"
 	//"time"
 	"bytes"
 	"encoding/binary"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/chain"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
-
 const (
 	// MsgWitnessFlag -
 	MsgWitnessFlag = 0x40000000
@@ -27,18 +24,15 @@ const (
 	// MsgWitnessBlock -
 	MsgWitnessBlock = MsgBlock | MsgWitnessFlag
 )
-
 func blockReceived(bh *btc.Uint256) (ok bool) {
 	MutexRcv.Lock()
 	_, ok = ReceivedBlocks[bh.BIdx()]
 	MutexRcv.Unlock()
 	return
 }
-
 func hash2invid(hash []byte) uint64 {
 	return binary.LittleEndian.Uint64(hash[4:12])
 }
-
 // InvStore - Make sure c.Mutex is locked when calling it
 func (c *OneConnection) InvStore(typ uint32, hash []byte) {
 	invID := hash2invid(hash)
@@ -56,7 +50,6 @@ func (c *OneConnection) InvStore(typ uint32, hash []byte) {
 	c.InvDone.Map[invID] = typ
 	c.InvDone.Idx++
 }
-
 // ProcessInv -
 func (c *OneConnection) ProcessInv(pl []byte) {
 	if len(pl) < 37 {
@@ -67,12 +60,10 @@ func (c *OneConnection) ProcessInv(pl []byte) {
 	c.Mutex.Lock()
 	c.X.InvsRecieved++
 	c.Mutex.Unlock()
-
 	cnt, of := btc.VLen(pl)
 	if len(pl) != of+36*cnt {
 		println("inv payload length mismatch", len(pl), of, cnt)
 	}
-
 	for i := 0; i < cnt; i++ {
 		typ := binary.LittleEndian.Uint32(pl[of : of+4])
 		c.Mutex.Lock()
@@ -113,10 +104,8 @@ func (c *OneConnection) ProcessInv(pl []byte) {
 		}
 		of += 36
 	}
-
 	return
 }
-
 // NetRouteInv -
 func NetRouteInv(typ uint32, h *btc.Uint256, fromConn *OneConnection) uint32 {
 	var feeSpkb uint64
@@ -131,16 +120,13 @@ func NetRouteInv(typ uint32, h *btc.Uint256, fromConn *OneConnection) uint32 {
 	}
 	return NetRouteInvExt(typ, h, fromConn, feeSpkb)
 }
-
 // NetRouteInvExt - This function is called from the main thread (or from an UI)
 func NetRouteInvExt(typ uint32, h *btc.Uint256, fromConn *OneConnection, feeSpkb uint64) (cnt uint32) {
 	common.CountSafe(fmt.Sprint("NetRouteInv", typ))
-
 	// Prepare the inv
 	inv := new([36]byte)
 	binary.LittleEndian.PutUint32(inv[0:4], typ)
 	copy(inv[4:36], h.Bytes())
-
 	// Append it to PendingInvs in each open connection
 	MutexNet.Lock()
 	for _, v := range OpenCons {
@@ -155,7 +141,6 @@ func NetRouteInvExt(typ uint32, h *btc.Uint256, fromConn *OneConnection, feeSpkb
 					sendInv = false
 					common.CountSafe("SendInvFeeTooLow")
 				}
-
 				/* This is to prevent sending own txs to "spying" peers:
 				else if fromConn==nil && v.X.InvsRecieved==0 {
 					sendInv = false
@@ -181,7 +166,6 @@ func NetRouteInvExt(typ uint32, h *btc.Uint256, fromConn *OneConnection, feeSpkb
 	MutexNet.Unlock()
 	return
 }
-
 // Call this function only when BlockIndexAccess is locked
 func addInvBlockBranch(inv map[[32]byte]bool, bl *chain.BlockTreeNode, stop *btc.Uint256) {
 	if len(inv) >= 500 || bl.BlockHash.Equal(stop) {
@@ -195,17 +179,14 @@ func addInvBlockBranch(inv map[[32]byte]bool, bl *chain.BlockTreeNode, stop *btc
 		addInvBlockBranch(inv, bl.Childs[i], stop)
 	}
 }
-
 // GetBlocks -
 func (c *OneConnection) GetBlocks(pl []byte) {
 	h2get, hashstop, e := parseLocatorsPayload(pl)
-
 	if e != nil || len(h2get) < 1 || hashstop == nil {
 		L.Debug("GetBlocks: error parsing payload from", c.PeerAddr.IP())
 		c.DoS("BadGetBlks")
 		return
 	}
-
 	invs := make(map[[32]byte]bool, 500)
 	for i := range h2get {
 		common.BlockChain.BlockIndexAccess.Lock()
@@ -219,7 +200,6 @@ func (c *OneConnection) GetBlocks(pl []byte) {
 					addInvBlockBranch(invs, bl, hashstop) // Yes - this is the main chain
 					if len(invs) > 0 {
 						common.BlockChain.BlockIndexAccess.Unlock()
-
 						inv := new(bytes.Buffer)
 						btc.WriteVlen(inv, uint64(len(invs)))
 						for k := range invs {
@@ -234,17 +214,14 @@ func (c *OneConnection) GetBlocks(pl []byte) {
 		}
 		common.BlockChain.BlockIndexAccess.Unlock()
 	}
-
 	common.CountSafe("GetblksMissed")
 	return
 }
-
 // SendInvs -
 func (c *OneConnection) SendInvs() (res bool) {
 	bTxs := new(bytes.Buffer)
 	bBlk := new(bytes.Buffer)
 	var cBlk []*btc.Uint256
-
 	c.Mutex.Lock()
 	if len(c.PendingInvs) > 0 {
 		for i := range c.PendingInvs {
@@ -267,7 +244,6 @@ func (c *OneConnection) SendInvs() (res bool) {
 					invSentOtherwise = true
 				}
 			}
-
 			if !invSentOtherwise {
 				bTxs.Write((*c.PendingInvs[i])[:])
 			}
@@ -276,13 +252,11 @@ func (c *OneConnection) SendInvs() (res bool) {
 	}
 	c.PendingInvs = nil
 	c.Mutex.Unlock()
-
 	if len(cBlk) > 0 {
 		for _, h := range cBlk {
 			c.SendCompactBlock(h)
 		}
 	}
-
 	if bBlk.Len() > 0 {
 		common.CountSafe("InvSentAsHeader")
 		b := new(bytes.Buffer)
@@ -290,12 +264,10 @@ func (c *OneConnection) SendInvs() (res bool) {
 		c.SendRawMsg("headers", append(b.Bytes(), bBlk.Bytes()...))
 		L.Debug("sent block's header(s)", bBlk.Len(), uint64(bBlk.Len()/81))
 	}
-
 	if bTxs.Len() > 0 {
 		b := new(bytes.Buffer)
 		btc.WriteVlen(b, uint64(bTxs.Len()/36))
 		c.SendRawMsg("inv", append(b.Bytes(), bTxs.Bytes()...))
 	}
-
 	return
 }

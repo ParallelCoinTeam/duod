@@ -1,12 +1,10 @@
 package btc
-
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"sync"
 )
-
 // Block -
 type Block struct {
 	Raw               []byte
@@ -15,25 +13,19 @@ type Block struct {
 	TxCount, TxOffset int  // Number of transactions and byte offset to the first one
 	Trusted           bool // if the block is trusted, we do not check signatures and some other things...
 	LastKnownHeight   uint32
-
 	BlockExtraInfo // If we cache block on disk (between downloading and comitting), this data has to be preserved
-
 	MedianPastTime uint32 // Set in PreCheckBlock() .. last used in PostCheckBlock()
-
 	// These flags are set in BuildTxList() used later (e.g. by script.VerifyTxScript):
 	NoWitnessSize int
 	BlockWeight   uint
 	TotalInputs   int
-
 	NoWitnessData []byte // This is set by BuildNoWitnessData()
 }
-
 // BlockExtraInfo -
 type BlockExtraInfo struct {
 	VerifyFlags uint32
 	Height      uint32
 }
-
 // NewBlock -
 func NewBlock(data []byte) (bl *Block, er error) {
 	if data == nil {
@@ -45,7 +37,6 @@ func NewBlock(data []byte) (bl *Block, er error) {
 	er = bl.UpdateContent(data)
 	return
 }
-
 // UpdateContent -
 func (bl *Block) UpdateContent(data []byte) error {
 	if len(data) < 81 {
@@ -59,32 +50,26 @@ func (bl *Block) UpdateContent(data []byte) error {
 	bl.TxOffset += 80
 	return nil
 }
-
 // Version -
 func (bl *Block) Version() uint32 {
 	return binary.LittleEndian.Uint32(bl.Raw[0:4])
 }
-
 // ParentHash -
 func (bl *Block) ParentHash() []byte {
 	return bl.Raw[4:36]
 }
-
 // MerkleRoot -
 func (bl *Block) MerkleRoot() []byte {
 	return bl.Raw[36:68]
 }
-
 // BlockTime -
 func (bl *Block) BlockTime() uint32 {
 	return binary.LittleEndian.Uint32(bl.Raw[68:72])
 }
-
 // Bits -
 func (bl *Block) Bits() uint32 {
 	return binary.LittleEndian.Uint32(bl.Raw[72:76])
 }
-
 // BuildTxList - Parses block's transactions and adds them to the structure, calculating hashes BTW.
 // It would be more elegant to use bytes.Reader here, but this solution is ~20% faster.
 func (bl *Block) BuildTxList() (e error) {
@@ -97,15 +82,11 @@ func (bl *Block) BuildTxList() (e error) {
 		bl.TxOffset += 80
 	}
 	bl.Txs = make([]*Tx, bl.TxCount)
-
 	offs := bl.TxOffset
-
 	var wg sync.WaitGroup
 	var data2hash, witness2hash []byte
-
 	bl.NoWitnessSize = 80 + VLenSize(uint64(bl.TxCount))
 	bl.BlockWeight = 4 * uint(bl.NoWitnessSize)
-
 	for i := 0; i < bl.TxCount; i++ {
 		var n int
 		bl.Txs[i], n = NewTx(bl.Raw[offs:])
@@ -146,12 +127,9 @@ func (bl *Block) BuildTxList() (e error) {
 		}(bl.Txs[i], data2hash, witness2hash)
 		offs += n
 	}
-
 	wg.Wait()
-
 	return
 }
-
 // BuildNoWitnessData - The block data in non-segwit format
 func (bl *Block) BuildNoWitnessData() (e error) {
 	if bl.TxCount == 0 {
@@ -174,12 +152,10 @@ func (bl *Block) BuildNoWitnessData() (e error) {
 	}
 	return
 }
-
 // GetBlockReward -
 func GetBlockReward(height uint32) uint64 {
 	return 50e8 >> (height / 210000)
 }
-
 // MerkleRootMatch -
 func (bl *Block) MerkleRootMatch() bool {
 	if bl.TxCount == 0 {
@@ -188,7 +164,6 @@ func (bl *Block) MerkleRootMatch() bool {
 	merkle, mutated := bl.GetMerkle()
 	return !mutated && bytes.Equal(merkle, bl.MerkleRoot())
 }
-
 // GetMerkle -
 func (bl *Block) GetMerkle() (res []byte, mutated bool) {
 	mtr := make([][32]byte, len(bl.Txs), 3*len(bl.Txs)) // make the buffer 3 times longer as we use append() inside CalcMerkle
