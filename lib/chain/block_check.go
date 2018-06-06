@@ -1,16 +1,21 @@
 package chain
+
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/ParallelCoinTeam/duod/lib/L"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/script"
 )
+
 // PreCheckBlock -
 // Make sure to call this function with ch.BlockIndexAccess locked
 func (ch *Chain) PreCheckBlock(bl *btc.Block) (dos bool, maybelater bool, err error) {
+	earlyblocks := bl.Height > 83
 	// Size limits
 	if len(bl.Raw) < 81 {
 		err = errors.New("CheckBlock() : size limits failed - RPC_Result:bad-blk-length")
@@ -24,7 +29,7 @@ func (ch *Chain) PreCheckBlock(bl *btc.Block) (dos bool, maybelater bool, err er
 		return
 	}
 	// Check proof-of-work
-	if !btc.CheckProofOfWork(bl.Hash, bl.Bits()) {
+	if !btc.CheckProofOfWork(bl.Hash, bl.Bits()) && earlyblocks {
 		err = errors.New("CheckBlock() : proof of work failed - RPC_Result:high-hash")
 		dos = true
 		return
@@ -60,8 +65,13 @@ func (ch *Chain) PreCheckBlock(bl *btc.Block) (dos bool, maybelater bool, err er
 		return
 	}
 	// Check proof of work
-	gnwr := ch.GetNextWorkRequired(prevblk, bl.BlockTime())
-	if bl.Bits() != gnwr {
+	gnwr := ch.GetNextWorkRequired(prevblk, bl.BlockTime(), bl.POWType)
+	L.Debug("New block: ", // bl.Hash.String(),
+		" height: ", bl.Height,
+		" bits: ", fmt.Sprintf("%x", bl.Bits()),
+		" PoW type: ", fmt.Sprintf("%8d", bl.POWType),
+		" Next work: ", gnwr)
+	if bl.Bits() != gnwr && earlyblocks {
 		err = errors.New("CheckBlock: incorrect proof of work - RPC_Result:bad-diffbits")
 		dos = true
 		return
@@ -91,6 +101,7 @@ func (ch *Chain) PreCheckBlock(bl *btc.Block) (dos bool, maybelater bool, err er
 	}
 	return
 }
+
 // ApplyBlockFlags -
 func (ch *Chain) ApplyBlockFlags(bl *btc.Block) {
 	if bl.BlockTime() >= BIP16SwitchTime {
@@ -111,6 +122,7 @@ func (ch *Chain) ApplyBlockFlags(bl *btc.Block) {
 		bl.VerifyFlags |= script.VerWitness | script.VerNullDummy
 	}
 }
+
 // PostCheckBlock -
 func (ch *Chain) PostCheckBlock(bl *btc.Block) (err error) {
 	// Size limits
@@ -218,6 +230,7 @@ func (ch *Chain) PostCheckBlock(bl *btc.Block) (err error) {
 	}
 	return
 }
+
 // CheckBlock -
 func (ch *Chain) CheckBlock(bl *btc.Block) (dos bool, maybelater bool, err error) {
 	dos, maybelater, err = ch.PreCheckBlock(bl)

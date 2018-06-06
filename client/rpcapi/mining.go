@@ -56,7 +56,7 @@ func GetNextBlockTemplate(r *GetBlockTemplateResp) {
 		r.Curtime = r.Mintime
 	}
 	height := common.Last.Block.Height + 1
-	bits := common.BlockChain.GetNextWorkRequired(common.Last.Block, uint32(r.Curtime))
+	bits := common.BlockChain.GetNextWorkRequired(common.Last.Block, uint32(r.Curtime), 2)
 	target := btc.SetCompact(bits).Bytes()
 	r.Capabilities = []string{"proposal"}
 	r.Version = 4

@@ -44,7 +44,7 @@ alias .restart=".stop;\
           .build;\
           .run;\
           .start;\
-          sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser -rpcpassword=pa55word -conf=/work/parallelcoin.conf -datadir=/work\
+          sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser -rpcpassword=pa55word -conf=/work/parallelcoin.conf -datadir=/work \
           -printtoconsole\""  
            \
  ### restart client

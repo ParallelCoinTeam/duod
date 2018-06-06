@@ -19,10 +19,10 @@ type BlockTreeNode struct {
 	BlockSize  uint32 // if this is zero, only header is known so far
 	TxCount    uint32
 	SigopsCost uint32
-
 	BlockHeader [80]byte
 
 	Trusted bool
+	PoWType	   uint32
 }
 
 // ParseUntilBlock -

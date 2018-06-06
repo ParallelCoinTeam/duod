@@ -20,6 +20,7 @@ type Block struct {
 	BlockWeight   uint
 	TotalInputs   int
 	NoWitnessData []byte // This is set by BuildNoWitnessData()
+	POWType uint32
 }
 // BlockExtraInfo -
 type BlockExtraInfo struct {

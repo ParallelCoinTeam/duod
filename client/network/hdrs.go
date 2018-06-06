@@ -1,16 +1,18 @@
 // Package network -
 package network
+
 import (
 	"bytes"
 	"encoding/binary"
-	// "encoding/hex"
-	"time"
 	"strconv"
+	"time"
+
 	"github.com/ParallelCoinTeam/duod/client/common"
+	"github.com/ParallelCoinTeam/duod/lib/L"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/chain"
-	"github.com/ParallelCoinTeam/duod/lib/L"
 )
+
 const (
 	// PHstatusNew -
 	PHstatusNew = iota
@@ -23,10 +25,12 @@ const (
 	// PHstatusFatal -
 	PHstatusFatal
 )
+
 // ProcessNewHeader -
 func (c *OneConnection) ProcessNewHeader(hdr []byte) (status int, blockToGet *OneBlockToGet) {
 	var ok bool
 	bl, _ := btc.NewBlock(hdr)
+	bl.POWType = binary.LittleEndian.Uint32(hdr[:4])
 	c.Mutex.Lock()
 	c.InvStore(MsgBlock, bl.Hash.Hash[:])
 	c.Mutex.Unlock()
@@ -51,7 +55,7 @@ func (c *OneConnection) ProcessNewHeader(hdr []byte) (status int, blockToGet *On
 		}
 		return PHstatusError, nil
 	}
-	L.Debug("New block: ", " ", bl.Hash.String(), " height: ", bl.Height)
+
 	node := common.BlockChain.AcceptHeader(bl)
 	blockToGet = &OneBlockToGet{Started: c.LastMsgTime, Block: bl, BlockTreeNode: node, InProgress: 0}
 	AddB2G(blockToGet)
@@ -66,12 +70,14 @@ func (c *OneConnection) ProcessNewHeader(hdr []byte) (status int, blockToGet *On
 	blockToGet.Block.Trusted = blockToGet.BlockTreeNode.Trusted
 	return PHstatusNew, blockToGet
 }
+
 // HandleHeaders -
 func (c *OneConnection) HandleHeaders(pl []byte) (newHeadersGot int) {
 	var highestBlockFound uint32
 	c.MutexSetBool(&c.X.GetHeadersInProgress, false)
 	b := bytes.NewReader(pl)
 	cnt, e := btc.ReadVLen(b)
+	L.Debug("count of headers: ", cnt)
 	if e != nil {
 		L.Debug("HandleHeaders:", e.Error(), c.PeerAddr.IP())
 		return
@@ -133,12 +139,14 @@ func (c *OneConnection) HandleHeaders(pl []byte) (newHeadersGot int) {
 	c.Mutex.Unlock()
 	return
 }
+
 // ReceiveHeadersNow -
 func (c *OneConnection) ReceiveHeadersNow() {
 	c.Mutex.Lock()
 	c.X.AllHeadersReceived = false
 	c.Mutex.Unlock()
 }
+
 // GetHeaders -
 // Handle getheaders protocol command
 // https://en.bitcoin.it/wiki/Protocol_specification#getheaders

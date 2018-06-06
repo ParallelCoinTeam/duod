@@ -1,5 +1,6 @@
 // Package network -
 package network
+
 import (
 	"bytes"
 	"encoding/binary"
@@ -9,13 +10,16 @@ import (
 	"os"
 	"strings"
 	"time"
+
 	"github.com/ParallelCoinTeam/duod/client/common"
-	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
+	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 )
+
 // IgnoreExternalIPFrom -
 var IgnoreExternalIPFrom = []string{}
+
 // SendVersion -
 func (c *OneConnection) SendVersion() {
 	b := bytes.NewBuffer([]byte{})
@@ -39,10 +43,12 @@ func (c *OneConnection) SendVersion() {
 	}
 	c.SendRawMsg("version", b.Bytes())
 }
+
 // IsDuod -
 func (c *OneConnection) IsDuod() bool {
 	return strings.HasPrefix(c.Node.Agent, "/Duod:")
 }
+
 // HandleVersion -
 func (c *OneConnection) HandleVersion(pl []byte) error {
 	if len(pl) >= 80 /*Up to, includiong, the nonce */ {
@@ -85,11 +91,9 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 			length, offset := btc.VLen(pl[80:])
 			offset += 80
 			c.Node.Agent = string(pl[offset : offset+length])
-			L.Debug("Agent string between ", offset, " and ", offset+length)
 			offset += length
 			if len(pl) >= offset+4 {
 				c.Node.Height = binary.LittleEndian.Uint32(pl[offset : offset+4])
-				L.Debug("Height between ", offset, " and ", offset+4)
 				c.X.GetBlocksDataNow = true
 				offset += 4
 				if len(pl) > offset && pl[offset] == 0 {
@@ -98,15 +102,9 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 			}
 			c.X.IsDuod = strings.HasPrefix(c.Node.Agent, "/Duod:")
 		}
-		L.Debug("Full version message: ", len(pl), " ", hex.EncodeToString(pl))
-		L.Debug("Version code: ", hex.EncodeToString(pl[0:4]))
-		L.Debug("Services code: ", hex.EncodeToString(pl[4:12]))
-		L.Debug("Timestamp code: ", hex.EncodeToString(pl[12:20]))
-		L.Debug("Reported IPv4: ", hex.EncodeToString(pl[40:44]))
-		L.Debug("Nonce of peer: ", hex.EncodeToString(pl[72:80]))
-		L.Debug("Remainder between 44 and 72: ", hex.EncodeToString(pl[44:80]))
-		L.Debug("User agent: ", c.Node.Agent)
-		L.Debug("Node height: ", c.Node.Height)
+		L.Debug("Nonce of peer: ", hex.EncodeToString(pl[72:80]),
+			" User agent: ", c.Node.Agent,
+			" Node height: ", c.Node.Height)
 		c.X.VersionReceived = true
 		c.Mutex.Unlock()
 		if useThisIP {

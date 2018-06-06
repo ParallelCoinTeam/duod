@@ -8,19 +8,13 @@
 		{
 			"fsPath": "$ROOTPATH$/lib/chain/chain.go",
 			"bookmarks": [
-				65
+				71
 			]
 		},
 		{
-			"fsPath": "$ROOTPATH$/client/network/tick.go",
+			"fsPath": "$ROOTPATH$/client/init.go",
 			"bookmarks": [
-				614
-			]
-		},
-		{
-			"fsPath": "$ROOTPATH$/client/network/ver.go",
-			"bookmarks": [
-				46
+				26
 			]
 		}
 	]

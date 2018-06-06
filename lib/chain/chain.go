@@ -7,6 +7,11 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/utxo"
 )
+const (
+	POWsha256d = uint32(iota)
+	POWscrypt
+	// TODO: Add more POW types as they are implemented here
+)
 // AbortNow -
 var AbortNow bool // set it to true to abort any activity
 // Chain -
@@ -33,6 +38,7 @@ type Chain struct {
 		BIP66Height                         uint32
 		BIP91Height                         uint32
 		S2XHeight                           uint32
+		MaxPoWSlice							[]uint32
 	}
 }
 // NewChanOpts -
@@ -52,7 +58,7 @@ func NewChainExt(dbrootdir string, genesis *btc.Uint256, rescan bool, opts *NewC
 	ch.CB = *opts
 	ch.Consensus.GensisTimestamp = 1405742300 // 1231006505
 	ch.Consensus.MaxPOWBits = 0x1e0fffff // 0x1d00ffff
-	ch.Consensus.MaxPOWValue, _ = new(big.Int).SetString("00000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16)
+	ch.Consensus.MaxPOWValue, _ = new(big.Int).SetString("00000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16)
 	if ch.testnet() {
 		ch.Consensus.BIP34Height = 1000000 // 21111
 		ch.Consensus.BIP65Height = 1000000 // 581885

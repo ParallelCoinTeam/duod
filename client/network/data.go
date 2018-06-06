@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"time"
+
 	"github.com/ParallelCoinTeam/duod/client/common"
-	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
+	"github.com/ParallelCoinTeam/duod/lib/btc"
 )
 
 // ProcessGetData -
@@ -105,12 +106,11 @@ func (c *OneConnection) ProcessGetData(payLoad []byte) {
 
 // This function is called from a net conn thread
 func netBlockReceived(conn *OneConnection, b []byte) {
-	L.Debug("Block received\n", hex.EncodeToString(b), "\n")
 	if len(b) < 100 {
+		L.Debug("Short Block")
 		conn.DoS("ShortBlock")
 		return
 	}
-
 	hash := btc.NewSha2Hash(b[:80])
 	idx := hash.BIdx()
 	//println("got block data", hash.String())
@@ -218,7 +218,7 @@ func netBlockReceived(conn *OneConnection, b []byte) {
 			println("write tmp block:", e.Error())
 		}
 	}
-
+	L.Debug("Message from data.go")
 	NetBlocks <- &BlockRcvd{Conn: conn, Block: b2g.Block, BlockTreeNode: b2g.BlockTreeNode, OneReceivedBlock: orb, BlockExtraInfo: bei}
 }
 
