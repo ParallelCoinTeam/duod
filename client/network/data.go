@@ -4,21 +4,22 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"time"
-
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/lib/btc"
 	"github.com/ParallelCoinTeam/duod/lib/L"
 )
 
 // ProcessGetData -
-func (c *OneConnection) ProcessGetData(pl []byte) {
+func (c *OneConnection) ProcessGetData(payLoad []byte) {
+	L.Debug("Processing block:\n", hex.EncodeToString(payLoad), "\nFrom ", c.PeerAddr.IP)
 	//var notfound []byte
 
 	//println(c.PeerAddr.IP(), "getdata")
-	b := bytes.NewReader(pl)
+	b := bytes.NewReader(payLoad)
 	cnt, e := btc.ReadVLen(b)
 	if e != nil {
 		L.Debug("ProcessGetData:", e.Error(), c.PeerAddr.IP())
@@ -30,7 +31,7 @@ func (c *OneConnection) ProcessGetData(pl []byte) {
 
 		n, _ := b.Read(h[:])
 		if n != 36 {
-			println("ProcessGetData: pl too short", c.PeerAddr.IP())
+			println("ProcessGetData: payLoad too short", c.PeerAddr.IP())
 			return
 		}
 
@@ -104,6 +105,7 @@ func (c *OneConnection) ProcessGetData(pl []byte) {
 
 // This function is called from a net conn thread
 func netBlockReceived(conn *OneConnection, b []byte) {
+	L.Debug("Block received\n", hex.EncodeToString(b), "\n")
 	if len(b) < 100 {
 		conn.DoS("ShortBlock")
 		return
@@ -222,12 +224,12 @@ func netBlockReceived(conn *OneConnection, b []byte) {
 
 // Read VLen followed by the number of locators
 // parse the payload of getblocks and getheaders messages
-func parseLocatorsPayload(pl []byte) (h2get []*btc.Uint256, hashstop *btc.Uint256, er error) {
+func parseLocatorsPayload(payLoad []byte) (h2get []*btc.Uint256, hashstop *btc.Uint256, er error) {
 	var cnt uint64
 	var h [32]byte
 	var ver uint32
 
-	b := bytes.NewReader(pl)
+	b := bytes.NewReader(payLoad)
 
 	// version
 	if er = binary.Read(b, binary.LittleEndian, &ver); er != nil {
@@ -408,9 +410,9 @@ func (c *OneConnection) GetBlockData() (yes bool) {
 
 	bu := new(bytes.Buffer)
 	btc.WriteVlen(bu, uint64(cnt))
-	pl := append(bu.Bytes(), invs.Bytes()...)
+	payLoad := append(bu.Bytes(), invs.Bytes()...)
 	L.Debug(c.ConnID, "fetching", cnt, "new blocks ->", cbip)
-	c.SendRawMsg("getdata", pl)
+	c.SendRawMsg("getdata", payLoad)
 	yes = true
 
 	return

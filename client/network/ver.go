@@ -19,8 +19,8 @@ var IgnoreExternalIPFrom = []string{}
 // SendVersion -
 func (c *OneConnection) SendVersion() {
 	b := bytes.NewBuffer([]byte{})
-	binary.Write(b, binary.LittleEndian, uint32(common.Version))
-	binary.Write(b, binary.LittleEndian, uint64(common.Services))
+	binary.Write(b, binary.LittleEndian, common.Version)
+	binary.Write(b, binary.LittleEndian, common.Services)
 	binary.Write(b, binary.LittleEndian, uint64(time.Now().Unix()))
 	b.Write(c.PeerAddr.NetAddr.Bytes())
 	if ExternalAddrLen() > 0 {
@@ -33,7 +33,7 @@ func (c *OneConnection) SendVersion() {
 	btc.WriteVlen(b, uint64(len(common.UserAgent)))
 	b.Write([]byte(common.UserAgent))
 	common.UnlockCfg()
-	binary.Write(b, binary.LittleEndian, uint32(common.Last.BlockHeight()))
+	binary.Write(b, binary.LittleEndian, common.Last.BlockHeight())
 	if !common.GetBool(&common.CFG.TXPool.Enabled) {
 		b.WriteByte(0) // don't notify me about txs
 	}
@@ -78,23 +78,35 @@ func (c *OneConnection) HandleVersion(pl []byte) error {
 		copy(c.Node.Nonce[:], pl[72:80])
 		c.Node.Services = binary.LittleEndian.Uint64(pl[4:12])
 		c.Node.Timestamp = binary.LittleEndian.Uint64(pl[12:20])
+
 		c.Node.ReportedIPv4 = binary.BigEndian.Uint32(pl[40:44])
 		useThisIP := sys.ValidIPv4(pl[40:44])
 		if len(pl) >= 86 {
-			le, of := btc.VLen(pl[80:])
-			of += 80
-			c.Node.Agent = string(pl[of : of+le])
-			of += le
-			if len(pl) >= of+4 {
-				c.Node.Height = binary.LittleEndian.Uint32(pl[of : of+4])
+			length, offset := btc.VLen(pl[80:])
+			offset += 80
+			c.Node.Agent = string(pl[offset : offset+length])
+			L.Debug("Agent string between ", offset, " and ", offset+length)
+			offset += length
+			if len(pl) >= offset+4 {
+				c.Node.Height = binary.LittleEndian.Uint32(pl[offset : offset+4])
+				L.Debug("Height between ", offset, " and ", offset+4)
 				c.X.GetBlocksDataNow = true
-				of += 4
-				if len(pl) > of && pl[of] == 0 {
+				offset += 4
+				if len(pl) > offset && pl[offset] == 0 {
 					c.Node.DoNotRelayTxs = true
 				}
 			}
 			c.X.IsDuod = strings.HasPrefix(c.Node.Agent, "/Duod:")
 		}
+		L.Debug("Full version message: ", len(pl), " ", hex.EncodeToString(pl))
+		L.Debug("Version code: ", hex.EncodeToString(pl[0:4]))
+		L.Debug("Services code: ", hex.EncodeToString(pl[4:12]))
+		L.Debug("Timestamp code: ", hex.EncodeToString(pl[12:20]))
+		L.Debug("Reported IPv4: ", hex.EncodeToString(pl[40:44]))
+		L.Debug("Nonce of peer: ", hex.EncodeToString(pl[72:80]))
+		L.Debug("Remainder between 44 and 72: ", hex.EncodeToString(pl[44:80]))
+		L.Debug("User agent: ", c.Node.Agent)
+		L.Debug("Node height: ", c.Node.Height)
 		c.X.VersionReceived = true
 		c.Mutex.Unlock()
 		if useThisIP {

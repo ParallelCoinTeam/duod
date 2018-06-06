@@ -3,6 +3,7 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	// "encoding/hex"
 	"time"
 	"strconv"
 	"github.com/ParallelCoinTeam/duod/client/common"
@@ -23,9 +24,8 @@ const (
 	PHstatusFatal
 )
 // ProcessNewHeader -
-func (c *OneConnection) ProcessNewHeader(hdr []byte) (int, *OneBlockToGet) {
+func (c *OneConnection) ProcessNewHeader(hdr []byte) (status int, blockToGet *OneBlockToGet) {
 	var ok bool
-	var b2g *OneBlockToGet
 	bl, _ := btc.NewBlock(hdr)
 	c.Mutex.Lock()
 	c.InvStore(MsgBlock, bl.Hash.Hash[:])
@@ -35,27 +35,26 @@ func (c *OneConnection) ProcessNewHeader(hdr []byte) (int, *OneBlockToGet) {
 		//fmt.Println("", i, bl.Hash.String(), "-already received")
 		return PHstatusOld, nil
 	}
-	if b2g, ok = BlocksToGet[bl.Hash.BIdx()]; ok {
+	if blockToGet, ok = BlocksToGet[bl.Hash.BIdx()]; ok {
 		common.CountSafe("HeaderFresh")
 		L.Debug(c.PeerAddr.IP(), " block ", bl.Hash.String(), " not new but get it")
-		return PHstatusFresh, b2g
+		return PHstatusFresh, blockToGet
 	}
 	common.CountSafe("HeaderNew")
-	//fmt.Println("", i, bl.Hash.String(), " - NEW!")
 	common.BlockChain.BlockIndexAccess.Lock()
 	defer common.BlockChain.BlockIndexAccess.Unlock()
 	if _, dos, er := common.BlockChain.PreCheckBlock(bl); er != nil {
 		common.CountSafe("PreCheckBlockFail")
-		L.Debug("PreCheckBlock err ", dos, " ", er.Error())
-		L.Debug("height: ", bl.Height, " nBits: ", strconv.FormatInt(int64(bl.Bits()), 16))
+		L.Debug("PreCheckBlock err ", dos, " ", er.Error(), " height: ", bl.Height, " nBits: ", strconv.FormatInt(int64(bl.Bits()), 16))
 		if dos {
 			return PHstatusFatal, nil
 		}
 		return PHstatusError, nil
 	}
+	L.Debug("New block: ", " ", bl.Hash.String(), " height: ", bl.Height)
 	node := common.BlockChain.AcceptHeader(bl)
-	b2g = &OneBlockToGet{Started: c.LastMsgTime, Block: bl, BlockTreeNode: node, InProgress: 0}
-	AddB2G(b2g)
+	blockToGet = &OneBlockToGet{Started: c.LastMsgTime, Block: bl, BlockTreeNode: node, InProgress: 0}
+	AddB2G(blockToGet)
 	LastCommitedHeader = node
 	if common.LastTrustedBlockMatch(node.BlockHash) {
 		common.SetUint32(&common.LastTrustedBlockHeight, node.Height)
@@ -64,8 +63,8 @@ func (c *OneConnection) ProcessNewHeader(hdr []byte) (int, *OneBlockToGet) {
 			node = node.Parent
 		}
 	}
-	b2g.Block.Trusted = b2g.BlockTreeNode.Trusted
-	return PHstatusNew, b2g
+	blockToGet.Block.Trusted = blockToGet.BlockTreeNode.Trusted
+	return PHstatusNew, blockToGet
 }
 // HandleHeaders -
 func (c *OneConnection) HandleHeaders(pl []byte) (newHeadersGot int) {
@@ -93,8 +92,8 @@ func (c *OneConnection) HandleHeaders(pl []byte) (newHeadersGot int) {
 				c.DoS("HdrErr2")
 				return
 			}
-			sta, b2g := c.ProcessNewHeader(hdr[:])
-			if b2g == nil {
+			sta, blockToGet := c.ProcessNewHeader(hdr[:])
+			if blockToGet == nil {
 				if sta == PHstatusFatal {
 					L.Debug("c.DoS(BadHeader)")
 					c.DoS("BadHeader")
@@ -106,21 +105,21 @@ func (c *OneConnection) HandleHeaders(pl []byte) (newHeadersGot int) {
 			} else {
 				if sta == PHstatusNew {
 					if cnt == 1 {
-						b2g.SendInvs = true
+						blockToGet.SendInvs = true
 					}
 					newHeadersGot++
 				}
-				if b2g.Block.Height > highestBlockFound {
-					highestBlockFound = b2g.Block.Height
+				if blockToGet.Block.Height > highestBlockFound {
+					highestBlockFound = blockToGet.Block.Height
 				}
-				if c.Node.Height < b2g.Block.Height {
+				if c.Node.Height < blockToGet.Block.Height {
 					c.Mutex.Lock()
-					c.Node.Height = b2g.Block.Height
+					c.Node.Height = blockToGet.Block.Height
 					c.Mutex.Unlock()
 				}
 				c.MutexSetBool(&c.X.GetBlocksDataNow, true)
-				if b2g.TmPreproc.IsZero() { // do not overwrite TmPreproc (in case of PHstatusFresh)
-					b2g.TmPreproc = time.Now()
+				if blockToGet.TmPreproc.IsZero() { // do not overwrite TmPreproc (in case of PHstatusFresh)
+					blockToGet.TmPreproc = time.Now()
 				}
 			}
 		}

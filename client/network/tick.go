@@ -547,9 +547,9 @@ func (c *OneConnection) AuthRvcd(pl []byte) {
 func (c *OneConnection) GetMPDone(pl []byte) {
 	if len(c.GetMP) > 0 {
 		if len(pl) != 1 || pl[0] == 0 || c.SendGetMP() != nil {
-			_ = <-c.GetMP
+			<-c.GetMP
 			if len(GetMPInProgressTicket) > 0 {
-				_ = <-GetMPInProgressTicket
+				<-GetMPInProgressTicket
 			}
 		}
 	}
@@ -582,9 +582,7 @@ func (c *OneConnection) Run() {
 		if c.IsBroken() {
 			break
 		}
-
 		cmd, readTried := c.FetchMessage()
-
 		now = time.Now()
 		if c.X.VersionReceived && now.After(nextInvs) {
 			c.SendInvs()
@@ -603,21 +601,17 @@ func (c *OneConnection) Run() {
 			}
 			continue
 		}
-
 		if c.X.VersionReceived {
 			c.PeerAddr.Alive()
 		}
-
 		c.Mutex.Lock()
 		c.counters["rcvd_"+cmd.cmd]++
 		c.counters["rbts_"+cmd.cmd] += uint64(len(cmd.pl))
 		c.X.LastCmdRcvd = cmd.cmd
 		c.X.LastBtsRcvd = uint32(len(cmd.pl))
 		c.Mutex.Unlock()
-
 		common.CountSafe("rcvd_" + cmd.cmd)
 		common.CountSafeAdd("rbts_"+cmd.cmd, uint64(len(cmd.pl)))
-
 		if cmd.cmd == "version" {
 			if c.X.VersionReceived {
 				L.Debug("VersionAgain from", c.ConnID, c.PeerAddr.IP(), c.Node.Agent)

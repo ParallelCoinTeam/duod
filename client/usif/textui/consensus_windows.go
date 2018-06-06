@@ -34,7 +34,7 @@ var (
 	ConsensusErrors uint64
 	mut sync.Mutex
 )
-func check_consensus(pkScr []byte, amount uint64, i int, tx *btc.Tx, verFlags uint32, result bool) {
+func checkConsensus(pkScr []byte, amount uint64, i int, tx *btc.Tx, verFlags uint32, result bool) {
 	var tmp []byte
 	if len(pkScr) != 0 {
 		tmp = make([]byte, len(pkScr))
@@ -90,7 +90,7 @@ func verify_script_with_amount(pkScr []byte, amount uint64, i int, tx *btc.Tx, v
 	result = (r1 == 1)
 	return
 }
-func consensus_stats(s string) {
+func consensusStats(s string) {
 	fmt.Println("Consensus Checks:", atomic.LoadUint64(&ConsensusChecks))
 	fmt.Println("Consensus ExpErr:", atomic.LoadUint64(&ConsensusExpErr))
 	fmt.Println("Consensus Errors:", atomic.LoadUint64(&ConsensusErrors))
@@ -114,6 +114,6 @@ func init() {
 	}
 	r1, _, _ := syscall.Syscall(bitcoinconsensus_version.Addr(), 0, 0, 0, 0)
 	common.Log.Println("Using", DllName, "version", r1, "to cross-check consensus rules")
-	script.VerifyConsensus = check_consensus
-	newUI("cons", false, consensus_stats, "See statistics of the consensus cross-checks")
+	script.VerifyConsensus = checkConsensus
+	newUI("cons", false, consensusStats, "See statistics of the consensus cross-checks")
 }

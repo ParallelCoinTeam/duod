@@ -15,7 +15,6 @@ import (
 	"github.com/ParallelCoinTeam/duod/lib/others/qdb"
 	"github.com/ParallelCoinTeam/duod/lib/others/sys"
 	"github.com/ParallelCoinTeam/duod/lib/others/utils"
-	"github.com/ParallelCoinTeam/duod/lib/L"
 )
 
 const (
@@ -309,7 +308,6 @@ func InitPeers(dir string) {
 // ClosePeerDB -
 func ClosePeerDB() {
 	if PeerDB != nil {
-		L.Debug("Closing peer DB")
 		PeerDB.Sync()
 		PeerDB.Defrag(true)
 		PeerDB.Close()

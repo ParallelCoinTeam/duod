@@ -26,17 +26,14 @@ func hostInit() {
 		common.MaxPeersNeeded = 5000
 	}
 	os.MkdirAll(common.DuodHomeDir, 0770)
-	L.Debug("Locking datadir")
 	sys.LockDatabaseDir(common.DuodHomeDir)
 	common.SecretKey, _ = ioutil.ReadFile(common.DuodHomeDir + "authkey")
 	if len(common.SecretKey) != 32 {
 		common.SecretKey = make([]byte, 32)
 		rand.Read(common.SecretKey)
 		ioutil.WriteFile(common.DuodHomeDir+"authkey", common.SecretKey, 0600)
-		L.Debug("Wrote new authkey")
 	}
 	common.PublicKey = btc.EncodeBase58(btc.PublicFromPrivate(common.SecretKey, true))
-	L.Debug("Public auth key: ", common.PublicKey)
 	_Exit := make(chan bool)
 	_Done := make(chan bool)
 	go func() {
@@ -55,16 +52,11 @@ func hostInit() {
 		sys.UnlockDatabaseDir()
 		os.Exit(1)
 	}
-	if common.CFG.Memory.UseGoHeap {
-		L.Debug("Using native Go heap with the garbage collector for UTXO records")
-	} else {
+	if !common.CFG.Memory.UseGoHeap {
 		utxo.MembindInit()
 	}
 	// L.Debugf("%s", string(common.LogBuffer.Bytes()))
 	common.LogBuffer = nil
-	if btc.ECVerify == nil {
-		L.Debug("Using native secp256k1 lib for ECVerify (consider installing a speedup)")
-	}
 	ext := &chain.NewChanOpts{
 		UTXOVolatileMode: common.FLAG.VolatileUTXO,
 		UndoBlocks:       common.FLAG.UndoBlocks,
@@ -76,7 +68,7 @@ func hostInit() {
 			MaxDataFileSize: uint64(common.CFG.Memory.MaxDataFileMB) << 20,
 			DataFilesKeep:   common.CFG.Memory.DataFilesKeep})
 	if chain.AbortNow {
-		L.Debugf("Blockchain opening aborted after %s seconds\n", time.Now().Sub(sta).String())
+		L.Debugf("Blockchain opening aborted after %s seconds\n", time.Since(sta))
 		common.BlockChain.Close()
 		sys.UnlockDatabaseDir()
 		os.Exit(1)
@@ -95,8 +87,8 @@ func hostInit() {
 	}
 	sto := time.Now()
 	al, sy := sys.MemUsed()
-L.Debug("Blockchain open in ", sto.Sub(sta).String(), ". ", al>>20, " + ", utxo.ExtraMemoryConsumed()>>20, "MB of RAM used (", sy>>20,")")
+	L.Debug("Blockchain open in ", sto.Sub(sta).String(), ". ", al>>20, " + ", utxo.ExtraMemoryConsumed()>>20, "MB of RAM used (", sy>>20,")")
 	common.StartTime = time.Now()
 	_Exit <- true
-	_ = <-_Done
+	<-_Done
 }

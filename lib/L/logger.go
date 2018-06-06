@@ -14,6 +14,7 @@ import (
 
 const (
 	logpath = "/tmp/debug.log"
+	debug = true
 )
 
 var (
@@ -24,11 +25,6 @@ var (
 	red = color.New(color.FgRed).FprintfFunc()
 )
 func init() {
-	logfile, err := os.OpenFile(logpath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 	Info = func(i ...interface{}) {
 		fmt.Println(i)
 	}
@@ -48,20 +44,42 @@ func init() {
 		fmt.Fprint(os.Stderr, " ")
 		function(os.Stderr)
 		fmt.Fprint(os.Stderr, "\n")
-
 	}
-	Debug = func(i ...interface{}) {
-		fmt.Fprint(logfile, time.Now().Format(time.StampMilli))
-		fmt.Fprint(logfile, " ")
-		bold(logfile, fmt.Sprint(i...))
-		fmt.Fprint(logfile, " ")
-		source(logfile)
-		fmt.Fprint(logfile, " ")
-		function(logfile)
-		fmt.Fprint(logfile, "\n")
-	}
-	DebugNoInfo = func(i ...interface{}) {
-		fmt.Fprintf(logfile, "%s\n", fmt.Sprint(i...))
+	if debug {
+		logfile, err := os.OpenFile(logpath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		Debug = func(i ...interface{}) {
+			fmt.Fprint(logfile, time.Now().Format(time.StampMilli))
+			fmt.Fprint(logfile, " ")
+			bold(logfile, fmt.Sprint(i...))
+			fmt.Fprint(logfile, " ")
+			source(logfile)
+			fmt.Fprint(logfile, " ")
+			function(logfile)
+			fmt.Fprint(logfile, "\n")
+		}
+		Debugf = func(f string, i ...interface{}) {
+			fmt.Fprint(logfile, time.Now().Format(time.StampMilli))
+			fmt.Fprint(logfile, " ")
+			bold(logfile, fmt.Sprintf(f, i...))
+			fmt.Fprint(logfile, " ")
+			source(logfile)
+			fmt.Fprint(logfile, " ")
+			function(logfile)
+			fmt.Fprint(logfile, "\n")
+		}
+		DebugNoInfo = func(i ...interface{}) {
+			fmt.Fprintf(logfile, "%s\n", fmt.Sprint(i...))
+		}
+	} else {
+		Debug = func(i ...interface{}) {
+		}
+		Debugf = func(f string, i ...interface{}) {
+		}
+		DebugNoInfo = func(i ...interface{}) {
+		}
 	}
 }
 

@@ -10,6 +10,18 @@
 			"bookmarks": [
 				65
 			]
+		},
+		{
+			"fsPath": "$ROOTPATH$/client/network/tick.go",
+			"bookmarks": [
+				614
+			]
+		},
+		{
+			"fsPath": "$ROOTPATH$/client/network/ver.go",
+			"bookmarks": [
+				46
+			]
 		}
 	]
 }

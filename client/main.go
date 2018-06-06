@@ -8,6 +8,7 @@ import (
 	"runtime/debug"
 	"time"
 	"unsafe"
+	"encoding/hex"
 	"github.com/ParallelCoinTeam/duod"
 	"github.com/ParallelCoinTeam/duod/client/common"
 	"github.com/ParallelCoinTeam/duod/client/network"
@@ -41,17 +42,21 @@ func resetSaveTimer() {
 }
 func blockMined(bl *btc.Block) {
 	network.BlockMined(bl)
-	if int(bl.LastKnownHeight)-int(bl.Height) < 144 { // do not run it when syncing chain
+	if int(bl.LastKnownHeight)-int(bl.Height) < 144 { 
+		L.Debug("Not syncing chain - process block fees")
 		usif.ProcessBlockFees(bl.Height, bl)
 	}
 }
 // LocalAcceptBlock -
 func LocalAcceptBlock(newbl *network.BlockRcvd) (e error) {
+	L.Debug("New block:\n", hex.EncodeToString(newbl.Block.Raw), "\n")
 	bl := newbl.Block
 	if common.FLAG.TrustAll || newbl.BlockTreeNode.Trusted {
 		bl.Trusted = true
 	}
-	common.BlockChain.Unspent.AbortWriting() // abort saving of UTXO.db
+	L.Debug("abort writing of UTXO.db")
+	common.BlockChain.Unspent.AbortWriting()
+	L.Debug("Adding block to block tree")
 	common.BlockChain.Blocks.BlockAdd(newbl.BlockTreeNode.Height, bl)
 	newbl.TmQueue = time.Now()
 	if newbl.DoInvs {
@@ -73,7 +78,7 @@ func LocalAcceptBlock(newbl *network.BlockRcvd) (e error) {
 		common.Last.Mutex.Unlock()
 		resetSaveTimer()
 	} else {
-		L.Debug("Warning: AcceptBlock failed. If the block was valid, you may need to rebuild the unspent DB (-r)")
+		L.Warn("Warning: AcceptBlock failed. If the block was valid, you may need to rebuild the unspent DB (-r)")
 		newEnd := common.BlockChain.LastBlock()
 		common.Last.Mutex.Lock()
 		common.Last.Block = newEnd
@@ -88,6 +93,24 @@ func LocalAcceptBlock(newbl *network.BlockRcvd) (e error) {
 		network.MutexRcv.Unlock()
 	}
 	return
+}
+func loadIfNewBlock(newbl *network.BlockRcvd) {
+	L.Debug("New block:\n", hex.EncodeToString(newbl.Block.Raw), "\n")
+	if newbl.Block == nil {
+		tmpfn := common.TempBlocksDir() + newbl.BlockTreeNode.BlockHash.String()
+		dat, e := ioutil.ReadFile(tmpfn)
+		os.Remove(tmpfn)
+		if e != nil {
+			panic(e.Error())
+		}
+		if newbl.Block, e = btc.NewBlock(dat); e != nil {
+			panic(e.Error())
+		}
+		if e = newbl.Block.BuildTxList(); e != nil {
+			panic(e.Error())
+		}
+		newbl.Block.BlockExtraInfo = *newbl.BlockExtraInfo
+	}
 }
 // RetryCachedBlocks -
 func RetryCachedBlocks() bool {
@@ -106,21 +129,7 @@ func RetryCachedBlocks() bool {
 		}
 		if common.BlockChain.HasAllParents(newbl.BlockTreeNode) {
 			common.Busy()
-			if newbl.Block == nil {
-				tmpfn := common.TempBlocksDir() + newbl.BlockTreeNode.BlockHash.String()
-				dat, e := ioutil.ReadFile(tmpfn)
-				os.Remove(tmpfn)
-				if e != nil {
-					panic(e.Error())
-				}
-				if newbl.Block, e = btc.NewBlock(dat); e != nil {
-					panic(e.Error())
-				}
-				if e = newbl.Block.BuildTxList(); e != nil {
-					panic(e.Error())
-				}
-				newbl.Block.BlockExtraInfo = *newbl.BlockExtraInfo
-			}
+			loadIfNewBlock(newbl)
 			e := LocalAcceptBlock(newbl)
 			if e != nil {
 				L.Debug("AcceptBlock2", newbl.BlockTreeNode.BlockHash.String(), "-", e.Error())
@@ -129,7 +138,7 @@ func RetryCachedBlocks() bool {
 			if usif.ExitNow.Get() {
 				return false
 			}
-			// remove it from cache
+			L.Debug("Removing block from the cache")
 			network.CachedBlocks = append(network.CachedBlocks[:idx], network.CachedBlocks[idx+1:]...)
 			network.CachedBlocksLen.Store(len(network.CachedBlocks))
 			return len(network.CachedBlocks) > 0
@@ -138,9 +147,7 @@ func RetryCachedBlocks() bool {
 	}
 	return false
 }
-// CheckParentDiscarded -
-// Return true iof the block's parent is on the DiscardedBlocks list
-// Add it to DiscardedBlocks, if returning true
+// CheckParentDiscarded - Return true iof the block's parent is on the DiscardedBlocks list. Add it to DiscardedBlocks, if returning true
 func CheckParentDiscarded(n *chain.BlockTreeNode) bool {
 	network.MutexRcv.Lock()
 	defer network.MutexRcv.Unlock()
@@ -153,6 +160,7 @@ func CheckParentDiscarded(n *chain.BlockTreeNode) bool {
 // HandleNetBlock -
 // Called from the blockchain thread
 func HandleNetBlock(newbl *network.BlockRcvd) {
+	L.Debug("New block:\n", hex.EncodeToString(newbl.Block.Raw), "\n")
 	defer func() {
 		common.CountSafe("MainNetBlock")
 		if common.GetUint32(&common.WalletOnIn) > 0 {
@@ -174,21 +182,7 @@ func HandleNetBlock(newbl *network.BlockRcvd) {
 		common.CountSafe("BlockPostone")
 		return
 	}
-	if newbl.Block == nil {
-		tmpfn := common.TempBlocksDir() + newbl.BlockTreeNode.BlockHash.String()
-		dat, e := ioutil.ReadFile(tmpfn)
-		os.Remove(tmpfn)
-		if e != nil {
-			panic(e.Error())
-		}
-		if newbl.Block, e = btc.NewBlock(dat); e != nil {
-			panic(e.Error())
-		}
-		if e = newbl.Block.BuildTxList(); e != nil {
-			panic(e.Error())
-		}
-		newbl.Block.BlockExtraInfo = *newbl.BlockExtraInfo
-	}
+	loadIfNewBlock(newbl)
 	common.Busy()
 	if e := LocalAcceptBlock(newbl); e != nil {
 		common.CountSafe("DiscardFreshBlockB")
@@ -268,7 +262,6 @@ func main() {
 		L.Warn("Assuming all scripts inside new blocks to PASS. Verify the last block's hash when finished.")
 	}
 	hostInit() // This will create the DB lock file and keep it open
-	L.Debug("Clearing temp blocks directory")
 	os.RemoveAll(common.TempBlocksDir())
 	common.MkTempBlocksDir()
 	if common.FLAG.UndoBlocks > 0 {
@@ -436,16 +429,13 @@ func main() {
 		wallet.UpdateMapSizes()
 		network.NetCloseAll()
 	}
-	sta := time.Now()
 	common.CloseBlockChain()
 	if common.FLAG.UndoBlocks == 0 {
 		network.MempoolSave(false)
 	}
-	L.Debug("Blockchain closed in ", time.Now().Sub(sta).String())
 	peersdb.ClosePeerDB()
 	usif.SaveBlockFees()
 	sys.UnlockDatabaseDir()
 	os.RemoveAll(common.TempBlocksDir())
-	L.Debug("Completed shutdown")
 	L.DebugNoInfo("\n\n")
 }

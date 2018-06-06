@@ -54,7 +54,6 @@ func MempoolSave(force bool) {
 		L.Debug(er.Error())
 		return
 	}
-	L.Debug("Saving ", MempoolFileName2)
 	wr := bufio.NewWriter(f)
 	wr.Write(common.Last.Block.BlockHash.Hash[:])
 	btc.WriteVlen(wr, uint64(len(TransactionsToSend)))
@@ -81,7 +80,6 @@ func MempoolLoad2() bool {
 	var cnt1, cnt2 uint
 	f, er := os.Open(common.DuodHomeDir + MempoolFileName2)
 	if er != nil {
-		L.Debug("MempoolLoad:", er.Error())
 		return false
 	}
 	defer f.Close()
