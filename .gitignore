@@ -15,3 +15,4 @@ work/chainstate
 work/database
 .lock
 db.log
+work/testnet/

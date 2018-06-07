@@ -5,6 +5,8 @@ ENV HOME /work
 ENV USER_ID ${USER_ID:-1000}
 ENV GROUP_ID ${GROUP_ID:-1000}
 
+RUN echo BLA
+
 RUN groupadd -g ${GROUP_ID} parallelcoin \
 	&& useradd -u ${USER_ID} -g parallelcoin -s /bin/bash -m -d /work parallelcoin
 
