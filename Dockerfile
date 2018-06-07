@@ -36,7 +36,7 @@ RUN cp /parallelcoin/parallelcoin-qt /parallelcoin/src/parallelcoind /usr/bin/
 VOLUME [ "/work" ]
 WORKDIR work
 
-EXPOSE 11047 11048
+EXPOSE 11047 11048 21047 21048
 
 # CMD su parallelcoin -c "cd /work; /usr/bin/parallelcoind"
 CMD tail -f /dev/null
