@@ -49,8 +49,7 @@ alias .reindex=".stop;.run;.start; \
 alias .testnet=".stop;.rm;.build;.run;.start;\
           sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser --privileged \
           -rpcpassword=pa55word -conf=/work/testnet.conf -datadir=/work \
-          -printtoconsole -testnet -externalip=$(echo $DKR_INTERFACE|sed 's/://g') \
-          -listen -gen -dnsseed=0\""
+          -printtoconsole -testnet -listen -gen -dnsseed=0\""
            \
  ### stop, rebuild, and run parallelcoind attached to the current tty
 

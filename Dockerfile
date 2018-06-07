@@ -20,6 +20,8 @@ RUN cd db-4.8.30.NC/build_unix/ \
     && make -j`nproc` \
     && make install
 
+RUN echo rebuilding
+
 RUN git clone https://github.com/marcetin/parallelcoin.git
 
 RUN cd parallelcoin/src \
