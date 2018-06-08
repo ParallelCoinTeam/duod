@@ -31,7 +31,7 @@ alias      .run="sudo docker run --privileged \
             -p $(echo $DKR_INTERFACE)11048:11048 \
             -p $(echo $DKR_INTERFACE)21047:21047 \
             -p $(echo $DKR_INTERFACE)21048:21048 \
-	    --cpus=1 \
+	    --cpus=0.25 \
             -v $DATADIR/work:/work -d=true --name $NAME $NAME"
            \
  ### start up the container (after building, to restart. for a'.stop'ed container, use '.start')  
@@ -52,7 +52,7 @@ alias .reindex=".stop;.run;.start; \
 alias .testnet=".stop;.rm;.build;.run;.start;\
           sudo docker exec -it $NAME su parallelcoin -c \"parallelcoind -rpcuser=rpcuser --privileged \
           -rpcpassword=pa55word -conf=/work/testnet.conf -datadir=/work \
-          -printtoconsole -testnet -listen -gen -algo=sha256d -dnsseed=0 -discover=0 \""
+          -printtoconsole -listen -gen -algo=scrypt -dnsseed=0 -discover=0 \""
            \
  ### stop, rebuild, and run parallelcoind attached to the current tty
 
