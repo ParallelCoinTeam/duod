@@ -20,18 +20,11 @@ RUN cd db-4.8.30.NC/build_unix/ \
     && make -j`nproc` \
     && make install
 
-RUN cd work; git clone https://github.com/ParallelCoinTeam/parallelcoin.git; \
-	cd parallelcoin; git pull; git checkout testing; echo 1
+RUN cd /work; git clone https://github.com/ParallelCoinTeam/parallelcoin.git; 
+RUN cd /work/parallelcoin; git pull; git checkout testing; echo 5
 
-RUN cd work/parallelcoin/src \
+RUN cd /work/parallelcoin/src \
     && make -f makefile.unix -j`nproc`
-
-#RUN cd parallelcoin \
-#    && qmake \
-#    && make -j`nproc`
-
-#RUN cp /parallelcoin/parallelcoin-qt /usr/bin
-RUN cp /work/parallelcoin/src/parallelcoind /usr/bin/
 
 VOLUME [ "/work" ]
 WORKDIR work
