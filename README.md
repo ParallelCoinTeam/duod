@@ -1,138 +1,164 @@
-# Parallelcoin Daemon and Wallet
+![](https://gitlab.com/parallelcoin/node/raw/master/assets/logo.png)
 
-## Contents of this repository
+# The Parallelcoin Node [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org) [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/p9c/pod/node)
 
-- Dockerfile to run the original most recent, can send queries through commands
- 
-- Genesis block generator that allows creating a new network
+Next generation full node for Parallelcoin, forked
+from [btcd](https://github.com/btcsuite/btcd)
 
-- Gocoin fork designed to allow the addition of eventually many more PoW algorithms to update the core vision of any miner being able to mine it, with a PWA web app served by it that enables full wallet function, offline signing and rpc based controls, one interface for every platform, and a strong difficulty adjustment algorithm to thwart timing and flooding attacks.
+## Hard Fork 1: Plan 9 from Crypto Space
 
-This is built on the Golang Bitcoin daemon Gocoin written by Piotr Narewski.
+**TODO:** update this!
 
-The first milestone set for this project is to implement a version that operates on the Parallelcoin network and implements its parameters as it operates at present, as well as adding Segwit addresses to be activated at a prescribed block height after release.
+9 algorithms can be used when mining:
 
-This will include the addition of a jsonRPC and gRPC interface for transaction broadcast and database query, the extension of the inbuilt web interface to provide a GUI written in Angular 2+ with Service Workers as the primary wallet application in addition to the cold wallet program and the interactive CLI built inside the Gocoin codebase.
+- Blake14lr (decred)
+- ~~Skein (myriadcoin)~~ Cryptonote7v2
+- Lyra2REv2 (sia)
+- Keccac (maxcoin, smartcash)
+- Scrypt (litecoin)
+- SHA256D (bitcoin)
+- GOST Stribog \*
+- Skein
+- X11 (dash)
 
-The new Gocoin codebase introduces many useful features, the most notable being a faster database cache engine and compression of the blockchain to reduce storage requirements (Gocoin is perfectly capable of coping with Bitcoin so it will perform even better with the smaller DUO chain).
+### Stochastic Binomial Filter Difficulty Adjustment
 
-### Then there will be significant changes made to improve the utility and performance of the token.
+After the upcoming hardfork, Parallelcoin will have the following features in
+its difficulty adjustment regime:
 
-- Block time of 60 seconds, expanded maximum block size to 8Mb
+- Exponential curve with power of 3 to respond gently the natural drift while
+  moving the difficulty fast in below 10% of target and 10x target, to deal with
+  recovering after a large increase in network hashpower
 
-- Expansion of token precision to 256 bits as 42:214 bit fixed point values, to facilitate better a changed reward schedule that will diminish the reward by a constant percentage (exponential decay or half-life) per time that targets the prescribed maximum supply but allows indefinite mining of the token so long as precision is expanded again later when necessary.
+- 293 second blocks (7 seconds less than 5 minutes), 1439 block averaging
+  window (about 4.8 days) that is varied by interpreting byte 0 of the sha256d
+  hash of newest block hash as a signed 8 bit integer to further disturb any
+  inherent rhythm (like dithering).
 
-- Stochastic moving average block-by-block difficulty adjustment - in order to prevent potential hashpower attacks, based on a deterministic selection of past blocks of a variable size derived from the head block hash (to prevent resonance springing up in response to a rapid jump or decline in network hash power on one of the PoW mining networks).
+- Difficulty adjustments are based on a window ending at the previous block of
+  each algorithm, meaning sharp rises from one algorithm do not immediately
+  affect the other algorithms, allowing a smoother recovery from a sudden drop
+  in hashrate, soaking up energetic movements more robustly and resiliently, and
+  reducing vulnerability to time distortion attacks.
 
-- Addition of Ethash Proof of Work derived from the Geth codebase, to reduce the chance of either SHA256 or Scrypt hashpower attacks, once an Ethash block appears, at the right schedule, the difficulty adjustment will be forced on the other solution types via the new difficulty adjustment algorithm.
+- Deterministic noise is added to the difficulty adjustment in a similar way as
+  is done with digital audio and images to improve the effective resolution of
+  the signal by reducing unwanted artifacts caused by the sampling process.
+  Miners are random generators, and a block time is like a tuning filter, so the
+  same principles apply.
 
-#### And in future, and beyond the simple token itself:
+- Rewards will be computed according to a much smoother, satoshi-precision
+  exponential decay curve that will produce a flat annual 5% supply expansion.
+  Increasing the precision of the denomination is planned for the next release
+  cycle, at 0.00000001 as the minimum denomination, there may be issues as
+  userbase increases.
 
-- A Masternodes-like system with a reward share to fund full nodes for maintaining available replicas of the database and entry points to the peer to peer network, including a DHT (built from Bittorrent) based rapid sync system to synchronise both the blockchain as well as shared files, essentially a staking reward for this service to the network, though with a fixed stake requirement, payments per block (with liveness requirement).
+- Fair Hardfork - Rewards will slowly rise from the initial hard fork at an
+  inverse exponential rate to bring the block reward from 0.02 up to 2 in 2000
+  blocks, as the adjustment to network capacity takes time, so rewards will
+  closely match the time interval they relate to until it starts faster from the
+  minimum target stabilises in response to what miners create.
 
-- SporeDB based BFT distributed database system for building distributed application systems that use Parallelcoin as the bulk underlying clearance layer. At first a Reputation/Prediction Market Forum/Media monetisation system, then extending above this a distributed concurrent versioning system like Github, which will at first be primarily used to host the code of the system itself, and facilitate the incentivisation of developers to work on the code of the network, and of course, very importantly, a distributed exchange system, as each Spore BFT protocol application will issue tokens according to a timeline and consensus rate, in order to allow the market regulation of the activity and valuation of each application ecosystem.
+## Installation
 
-# About Gocoin
+For the main full node server:
 
-**Gocoin** is a full **Bitcoin** solution written in Go language (golang).
+```bash
+go get github.com/parallelcointeam/parallelcoin
+```
 
-The software architecture is focused on maximum performance of the node
-and cold storage security of the wallet.
+You probably will also want CLI client (can also speak to other bitcoin protocol
+RPC endpoints also):
 
-The **client** (p2p node) is an application independent from the **wallet**.
-It keeps the entire UTXO set in RAM, providing the best block processing performance on the market.
-With a decent machine and a fast connection (e.g. 4 vCPUs from Google Cloud or Amazon AWS),
-the node should sync the entire bitcoin block chain in less than 4 hours (as of chain height ~512000).
+```bash
+go get github.com/p9c/pod/cmd/podctl
+```
 
-The **wallet** is designed to be used offline.
-It is deterministic and password seeded.
-As long as you remember the password, you do not need any backups ever.
+## Requirements
 
-# Requirements
+[Go](http://golang.org) 1.11 or newer.
 
-## Hardware
+## Installation
 
-**client**:
+#### Windows not available yet
 
-* 64-bit architecture OS and Go compiler.
-* File system supporting files larger than 4GB.
-* At least 15GB of system memory (RAM).
+When it is, it will be available here:
 
+https://github.com/p9c/pod/releases
 
-**wallet**:
+#### Linux/BSD/MacOSX/POSIX - Build from Source
 
-* Any platform that you can make your Go (cross)compiler to build for (Raspberry Pi works).
-* For security reasons make sure to use encrypted swap file (if there is a swap file).
-* If you decide to store your password in a file, have the disk encrypted (in case it gets stolen).
+- Install Go according to
+  the [installation instructions](http://golang.org/doc/install)
+- Ensure Go was installed properly and is a supported version:
 
+```bash
+$ go version
+$ go env GOROOT GOPATH
+```
 
-## Operating System
-Having hardware requirements met, any target OS supported by your Go compiler will do.
-Currently that can be at least one of the following:
+NOTE: The `GOROOT` and `GOPATH` above must not be the same path. It is
+recommended that `GOPATH` is set to a directory in your home directory such
+as `~/goprojects` to avoid write permission issues. It is also recommended to
+add `$GOPATH/bin` to your `PATH` at this point.
 
-* Windows
-* Linux
-* OS X
-* Free BSD
+- Run the following commands to obtain pod, all dependencies, and install it:
 
-## Build environment
-In order to build Gocoin yourself, you will need the following tools installed in your system:
+```bash
+$ go get github.com/parallelcointeam/parallelcoin
+```
 
-* **Go** (version 1.8 or higher) - http://golang.org/doc/install
-* **Git** - http://git-scm.com/downloads
+- pod (and utilities) will now be installed in `$GOPATH/bin`. If you did not
+  already add the bin directory to your system path during Go installation, we
+  recommend you do so now.
 
-If the tools mentioned above are all properly installed, you should be able to execute `go` and `git`
-from your OS's command prompt without a need to specify full path to the executables.
+## Updating
 
-### Linux
+#### Windows
 
-When building for Linux make sure to have `gcc` installed or delete file `lib/utxo/membind_linux.go`
+Install a newer MSI
 
+#### Linux/BSD/MacOSX/POSIX - Build from Source
 
-# Getting sources
+- Run the following commands to update pod, all dependencies, and install it:
 
-Use `go get` to fetch and install the source code files.
-Note that source files get installed within your GOPATH folder.
+```bash
+$ cd $GOPATH/src/github.com/parallelcointeam/parallelcoin
+$ git pull && glide install
+$ go install . ./cmd/...
+```
 
-	go get github.com/ParallelCoinTeam/duod
+## Getting Started
 
+pod has several configuration options available to tweak how it runs, but all of
+the basic operations described in the intro section work with zero
+configuration.
 
-# Building
+#### Windows (Installed from MSI)
 
-## Client node
-Go to the `client/` folder and execute `go build` there.
+Launch pod from your Start menu.
 
+#### Linux/BSD/POSIX/Source
 
-## Wallet
-Go to the `wallet/` folder and execute `go build` there.
+```bash
+$ ./pod
+```
 
+## Discord
 
-## Tools
-Go to the `tools/` folder and execute:
+Come and chat at our (discord server](https://discord.gg/nJKts94)
 
-	go build btcversig.go
+## Issue Tracker
 
-Repeat the `go build` for each source file of the tool you want to build.
+The [integrated github issue tracker](https://github.com/p9c/pod/issues)
+is used for this project.
 
-# Binaries
+## Documentation
 
-Windows or Linux (amd64) binaries can be downloaded from
+The documentation is a work-in-progress. It is located in
+the [docs](https://github.com/p9c/pod/tree/master/docs)
+folder.
 
- * https://sourceforge.net/projects/gocoin/files/?source=directory
+## License
 
-Please note that the binaries are usually not up to date.
-I strongly encourage everyone to build the binaries himself.
-
-# Development
-Although it is an open source project, I am sorry to inform you that I will not merge in any pull requests.
-The reason is that I want to stay an explicit author of this software, to keep a full control over its
-licensing. If you are missing some functionality, just describe me your needs and I will see what I can do
-for you. But if you want your specific code in, please fork and develop your own repo.
-
-# Support
-The official web page of the project is served at <a href="http://gocoin.pl">gocoin.pl</a>
-where you can find extended documentation, including **User Manual**.
-
-Please do not log github issues when you only have questions concerning this software.
-Instead see [Contact](http://gocoin.pl/gocoin_links.html) page at [gocoin.pl](http://gocoin.pl) website
-for possible ways of contacting me.
+pod is licensed under the [copyfree](http://copyfree.org) ISC License.

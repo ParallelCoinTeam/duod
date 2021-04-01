@@ -1,3 +1,0 @@
-{
-  "Enable": ["deadcode", "unconvert", "maligned", "megacheck", "dupl", "interfacer", "goconst","golint"]
-}
